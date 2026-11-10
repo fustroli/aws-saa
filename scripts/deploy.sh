@@ -3,7 +3,7 @@
 #
 # Usage:  npm run deploy
 # Env:    STACK_NAME       (default: aws-saa)
-#         AWS_REGION       (must be us-east-1 if set; the stack always deploys there)
+#         AWS_REGION       (default: your CLI default region)
 #         ARTIFACT_BUCKET  (default: <stack>-artifacts-<account>-<region>, created if missing)
 #         AWS_PROFILE      (optional, standard AWS CLI)
 set -euo pipefail
@@ -11,10 +11,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 STACK_NAME="${STACK_NAME:-aws-saa}"
-# The stack's WAF web ACL is CloudFront-scoped, and those only exist in us-east-1.
-REGION=us-east-1
-if [[ -n "${AWS_REGION:-}" && "$AWS_REGION" != "$REGION" ]]; then
-  echo "This stack must be deployed in $REGION (CloudFront WAF web ACLs exist only there); unset AWS_REGION or set it to $REGION." >&2
+REGION="${AWS_REGION:-$(aws configure get region || true)}"
+if [[ -z "$REGION" ]]; then
+  echo "Set AWS_REGION or a default CLI region." >&2
   exit 1
 fi
 export AWS_REGION="$REGION"
