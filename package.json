@@ -1,0 +1,33 @@
+{
+  "name": "aws-saa",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "bank:md": "node scripts/render-bank.mjs",
+    "build:lambda": "esbuild infra/lambda/handler.ts --bundle --platform=node --target=node22 --format=cjs --minify --sourcemap --outfile=dist-infra/lambda/index.js && echo '{\"type\":\"commonjs\"}' > dist-infra/lambda/package.json",
+    "deploy": "bash scripts/deploy.sh"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1165.0",
+    "@types/aws-lambda": "^8.10.164",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "esbuild": "^0.28.2",
+    "oxlint": "^1.90.0",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
+  }
+}

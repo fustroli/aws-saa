@@ -1,0 +1,648 @@
+[
+  {
+    "id": "cost-4.1-01",
+    "domain": "cost",
+    "services": [
+      "Amazon S3",
+      "S3 Intelligent-Tiering"
+    ],
+    "text": "A company stores 400 TB of user-generated media in Amazon S3 Standard. Most objects are larger than 1 MB. Analysis shows that some objects are popular for years while others are never read again after the first week, and the company cannot predict which objects will become popular. When an object is requested, it must be returned in milliseconds. The company wants to reduce storage cost without adding retrieval charges for popular objects.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an S3 Lifecycle rule that transitions all objects to S3 Standard-Infrequent Access 30 days after creation.",
+        "note": "Standard-IA lowers storage cost, but every read incurs a per-GB retrieval charge. Objects that stay popular for years would generate ongoing retrieval fees, which the company wants to avoid."
+      },
+      {
+        "id": "b",
+        "text": "Create an S3 Lifecycle rule that transitions all objects to S3 Glacier Flexible Retrieval 30 days after creation.",
+        "note": "Glacier Flexible Retrieval has low storage cost, but objects must be restored before they can be read, which takes minutes to hours. This does not meet the millisecond access requirement."
+      },
+      {
+        "id": "c",
+        "text": "Create an S3 Lifecycle rule that transitions all objects to S3 Intelligent-Tiering 0 days after creation.",
+        "note": "S3 Intelligent-Tiering moves each object between frequent, infrequent, and archive instant access tiers based on its own access pattern, with millisecond access and no retrieval charges. It suits unknown or changing access patterns."
+      },
+      {
+        "id": "d",
+        "text": "Create an S3 Lifecycle rule that transitions all objects to S3 One Zone-Infrequent Access 30 days after creation.",
+        "note": "One Zone-IA is cheaper than Standard-IA, but it charges retrieval fees on every read and stores data in a single Availability Zone, which reduces resilience for the user media."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "S3 Intelligent-Tiering is the answer for unknown or unpredictable access patterns: it tiers each object automatically and charges no retrieval fees, only a small per-object monitoring fee. Standard-IA is cheaper only when you know objects will be read rarely."
+  },
+  {
+    "id": "cost-4.1-02",
+    "domain": "cost",
+    "services": [
+      "Amazon S3",
+      "S3 Lifecycle"
+    ],
+    "text": "A data processing application writes about 5 TB of intermediate files to an Amazon S3 bucket every day. Downstream jobs read each file several times during the first 2 days. After 7 days, the files are never read again and are no longer needed. The company wants to minimize storage cost for the bucket.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Store the files in S3 Standard. Create an S3 Lifecycle rule that expires the objects 7 days after creation.",
+        "note": "S3 Standard has no minimum storage duration and no retrieval fees, which suits files read several times in a short window. Expiring them at 7 days removes them as soon as they are no longer needed."
+      },
+      {
+        "id": "b",
+        "text": "Store the files in S3 Standard-Infrequent Access. Create an S3 Lifecycle rule that expires the objects 7 days after creation.",
+        "note": "Standard-IA has a 30-day minimum storage duration, so objects deleted at 7 days are still billed for 30 days. Its retrieval fees also apply to the repeated reads in the first 2 days."
+      },
+      {
+        "id": "c",
+        "text": "Store the files in S3 Standard. Create an S3 Lifecycle rule that transitions the objects to S3 Glacier Instant Retrieval after 2 days and expires them after 7 days.",
+        "note": "Glacier Instant Retrieval has a 90-day minimum storage duration. Objects deleted after 7 days are billed for the full 90 days, plus transition request charges, which costs more than keeping them in Standard."
+      },
+      {
+        "id": "d",
+        "text": "Store the files in S3 Intelligent-Tiering. Create an S3 Lifecycle rule that expires the objects 7 days after creation.",
+        "note": "Intelligent-Tiering moves objects to its infrequent tier only after 30 days without access, so it saves nothing for 7-day objects and adds a per-object monitoring fee."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Minimum storage durations matter for short-lived data: 30 days for Standard-IA and One Zone-IA, 90 days for Glacier Instant and Flexible Retrieval, and 180 days for Deep Archive. Data that lives only a few days is cheapest in S3 Standard with an expiration rule."
+  },
+  {
+    "id": "cost-4.1-03",
+    "domain": "cost",
+    "services": [
+      "Amazon S3",
+      "S3 Glacier Deep Archive",
+      "S3 Lifecycle"
+    ],
+    "text": "An insurance company must retain scanned claim documents for 10 years after a claim closes. Closed-claim documents are read only when a regulator requests them, which happens a few times each year. The company has up to 5 business days to respond to each request. New documents are uploaded to Amazon S3 Standard and are actively used for 90 days.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an S3 Lifecycle rule that transitions the objects to S3 Standard-Infrequent Access after 90 days and expires them after 10 years.",
+        "note": "Standard-IA provides millisecond access, which the company does not need, and its storage cost is many times that of the archive classes. It is not the most cost-effective option for a 5-day response window."
+      },
+      {
+        "id": "b",
+        "text": "Create an S3 Lifecycle rule that transitions the objects to S3 Glacier Instant Retrieval after 90 days and expires them after 10 years.",
+        "note": "Glacier Instant Retrieval suits archives that need millisecond access. With days available to respond, the company pays more for storage than necessary."
+      },
+      {
+        "id": "c",
+        "text": "Create an S3 Lifecycle rule that transitions the objects to S3 Glacier Flexible Retrieval after 90 days and expires them after 10 years.",
+        "note": "Glacier Flexible Retrieval is cheaper than the instant-access classes, but its storage cost is higher than Deep Archive. Its faster retrieval options are not needed for a 5-day response window."
+      },
+      {
+        "id": "d",
+        "text": "Create an S3 Lifecycle rule that transitions the objects to S3 Glacier Deep Archive after 90 days and expires them after 10 years.",
+        "note": "Glacier Deep Archive is the lowest-cost S3 storage class. Standard retrievals complete within 12 hours and bulk retrievals within 48 hours, both well within the 5-day window."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Match the archive class to the retrieval deadline: Glacier Instant Retrieval for milliseconds, Flexible Retrieval for minutes to hours, Deep Archive for 12 to 48 hours. When days are acceptable and data is kept for years, Deep Archive is the cheapest."
+  },
+  {
+    "id": "cost-4.1-04",
+    "domain": "cost",
+    "services": [
+      "Amazon S3",
+      "S3 Glacier Flexible Retrieval"
+    ],
+    "text": "A research institute stores 200 TB of satellite imagery in the S3 Glacier Flexible Retrieval storage class. A new project needs the entire dataset available in Amazon S3 to start processing in 2 days. The institute wants to minimize the cost of the restore.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Restore the objects by using the Expedited retrieval option and purchase provisioned retrieval capacity.",
+        "note": "Expedited retrievals return data in minutes but have the highest per-GB and per-request charges, and provisioned capacity adds a fixed cost. The 2-day deadline does not require this speed."
+      },
+      {
+        "id": "b",
+        "text": "Restore the objects by using the Bulk retrieval option with S3 Batch Operations.",
+        "note": "Bulk retrievals from Glacier Flexible Retrieval typically complete within 5 to 12 hours and have no per-GB retrieval charge. S3 Batch Operations can submit restore requests for every object, and the data is ready well within 2 days."
+      },
+      {
+        "id": "c",
+        "text": "Restore the objects by using the Standard retrieval option with S3 Batch Operations.",
+        "note": "Standard retrievals finish in 3 to 5 hours (when started through S3 Batch Operations they begin within minutes), which also meets the deadline. However, they incur per-GB retrieval charges, so they cost more than free Bulk retrievals for 200 TB."
+      },
+      {
+        "id": "d",
+        "text": "Create an S3 Lifecycle rule that transitions the objects to S3 Glacier Instant Retrieval, then read them directly.",
+        "note": "S3 Lifecycle cannot transition objects from Glacier Flexible Retrieval to Glacier Instant Retrieval. Objects in Flexible Retrieval must be restored before they can be accessed."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Glacier Flexible Retrieval offers Expedited (1 to 5 minutes), Standard (3 to 5 hours), and Bulk (5 to 12 hours, no per-GB retrieval fee). When the deadline allows hours, Bulk is the cheapest way to restore large datasets."
+  },
+  {
+    "id": "cost-4.1-05",
+    "domain": "cost",
+    "services": [
+      "Amazon EBS",
+      "Amazon EC2"
+    ],
+    "text": "A company runs 300 Amazon EC2 instances, each with a 1 TB General Purpose SSD (gp2) EBS volume. Monitoring shows that each volume uses about 2,000 IOPS and 100 MiB/s of throughput at peak. The company wants to reduce EBS costs without reducing performance or stopping the instances.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a snapshot of each volume, create a gp3 volume from the snapshot, stop each instance, and swap the volumes.",
+        "note": "This results in gp3 volumes, but it requires stopping each instance and managing snapshots and volume swaps for 300 instances. It has more operational overhead and causes downtime."
+      },
+      {
+        "id": "b",
+        "text": "Modify each volume to Throughput Optimized HDD (st1) by using Elastic Volumes.",
+        "note": "st1 is cheaper per GB but is designed for large sequential throughput and delivers low IOPS for small random I/O. It cannot be used as a boot volume and would reduce performance for these workloads."
+      },
+      {
+        "id": "c",
+        "text": "Modify each volume to General Purpose SSD (gp3) by using Elastic Volumes while the instances keep running.",
+        "note": "gp3 costs about 20% less per GB than gp2 and includes a baseline of 3,000 IOPS and 125 MiB/s regardless of size, which covers the measured peaks. Elastic Volumes changes the type in place without detaching volumes or stopping instances."
+      },
+      {
+        "id": "d",
+        "text": "Modify each volume to Provisioned IOPS SSD (io2) with 2,000 provisioned IOPS by using Elastic Volumes.",
+        "note": "io2 provides consistent IOPS with high durability, but it charges for both storage and provisioned IOPS. It costs more than gp2 and does not meet the cost-reduction goal."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Migrating gp2 to gp3 is a standard cost optimization: gp3 is cheaper per GB and decouples IOPS and throughput from volume size. Elastic Volumes performs the change online, so no snapshots or downtime are needed."
+  },
+  {
+    "id": "cost-4.1-06",
+    "domain": "cost",
+    "services": [
+      "Amazon EBS",
+      "Amazon Data Lifecycle Manager"
+    ],
+    "text": "A company takes daily snapshots of 50 Amazon EBS volumes and must keep each daily snapshot for 14 days. For compliance, the company must also keep one snapshot of each volume per month for 7 years. Monthly snapshots are restored only during rare audits, and a restore time of up to 3 days is acceptable. The company wants to automate snapshot management and minimize storage cost.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Amazon Data Lifecycle Manager policy with a daily schedule that retains 14 snapshots and a monthly schedule that moves snapshots to the EBS Snapshots Archive tier and retains them for 7 years.",
+        "note": "Data Lifecycle Manager automates creation and deletion of snapshots on multiple schedules. EBS Snapshots Archive stores full snapshots at about 75% lower cost than the standard tier with restores within 72 hours, which fits rarely restored 7-year snapshots."
+      },
+      {
+        "id": "b",
+        "text": "Create an Amazon Data Lifecycle Manager policy with a daily schedule that retains 14 snapshots and a monthly schedule that keeps snapshots in the standard tier for 7 years.",
+        "note": "This automates retention, but monthly snapshots kept for 7 years in the standard snapshot tier cost more than in the archive tier. It is not the most cost-effective option given the 3-day restore tolerance."
+      },
+      {
+        "id": "c",
+        "text": "Create an Amazon Data Lifecycle Manager policy for the daily snapshots. Export the monthly snapshots to an Amazon S3 bucket and use an S3 Lifecycle rule to transition them to S3 Glacier Deep Archive.",
+        "note": "EBS snapshots are stored by AWS and are not exposed as objects in a customer bucket, so they cannot be transitioned with S3 Lifecycle rules. Exporting volume data to S3 would require custom tooling and manual restores."
+      },
+      {
+        "id": "d",
+        "text": "Use a cron job on an Amazon EC2 instance that calls the EBS API to create snapshots and delete expired snapshots based on tags.",
+        "note": "A custom script can manage snapshots, but the company must maintain the instance and code, and the snapshots remain in the standard tier. It is neither automated with a managed service nor the lowest cost."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Amazon Data Lifecycle Manager automates EBS snapshot schedules and retention, and it can move snapshots to EBS Snapshots Archive. The archive tier suits snapshots kept 90 days or more that are rarely restored and can tolerate a 24 to 72 hour restore."
+  },
+  {
+    "id": "cost-4.1-07",
+    "domain": "cost",
+    "services": [
+      "Amazon EFS"
+    ],
+    "text": "A company uses an Amazon EFS file system that uses the Regional (multi-AZ) file system type to share 30 TB of project files across Amazon EC2 instances. Most files are not opened again 30 days after they are created. When an old project is reopened, its files are read repeatedly for several weeks. The files must remain accessible through the same file system paths and must stay resilient to the loss of an Availability Zone.\n\nWhich combination of steps will meet these requirements MOST cost-effectively? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a new EFS file system with the One Zone file system type and copy the project files to it.",
+        "note": "EFS One Zone stores data in a single Availability Zone. It reduces cost but does not meet the requirement to stay resilient to the loss of an Availability Zone."
+      },
+      {
+        "id": "b",
+        "text": "Configure an EFS lifecycle policy that transitions files to the Infrequent Access storage class after 30 days without access.",
+        "note": "EFS lifecycle management moves files that have not been accessed for the set period to the lower-cost Infrequent Access class. The files remain at the same paths and keep multi-AZ resilience."
+      },
+      {
+        "id": "c",
+        "text": "Use AWS DataSync to move files older than 30 days to an S3 bucket in S3 Glacier Flexible Retrieval and delete them from the file system.",
+        "note": "This lowers storage cost, but the files would no longer be available through the file system paths, and reading them would require a restore. It changes how the application accesses data."
+      },
+      {
+        "id": "d",
+        "text": "Configure the EFS lifecycle policy to transition files back to the Standard storage class on their first access.",
+        "note": "Moving a file back to Standard on first access stops repeated reads of a reopened project from incurring Infrequent Access per-GB read charges for weeks. This keeps cost low for both cold and reactivated files."
+      },
+      {
+        "id": "e",
+        "text": "Change the file system throughput mode from Bursting to Provisioned Throughput.",
+        "note": "Provisioned Throughput adds a charge for throughput above the baseline. It does not reduce storage cost and does not address the access pattern."
+      }
+    ],
+    "correct": [
+      "b",
+      "d"
+    ],
+    "explanation": "EFS lifecycle management tiers files to Infrequent Access (and Archive) after a period without access, and can move them back to Standard on first access. Together these work like Intelligent-Tiering for EFS while keeping the Regional file system type."
+  },
+  {
+    "id": "cost-4.1-08",
+    "domain": "cost",
+    "services": [
+      "Amazon S3 Storage Lens",
+      "AWS Organizations",
+      "Amazon S3"
+    ],
+    "text": "A company has 250 AWS accounts in AWS Organizations with more than 4,000 Amazon S3 buckets. The FinOps team wants a single view that shows storage growth trends, buckets that hold large amounts of incomplete multipart upload data or noncurrent versions, and buckets without lifecycle rules, across all accounts and Regions. The team wants to avoid building a custom reporting pipeline.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Enable S3 Inventory on every bucket in every account. Deliver the reports to a central bucket and query them with Amazon Athena.",
+        "note": "S3 Inventory lists objects and their metadata, but configuring it on 4,000 buckets and writing Athena queries and dashboards is a custom reporting pipeline. It has much more operational overhead."
+      },
+      {
+        "id": "b",
+        "text": "Use AWS Cost Explorer in the management account. Group S3 costs by linked account and usage type.",
+        "note": "Cost Explorer shows spending by account, service, and usage type. It does not show bucket-level details such as incomplete multipart upload bytes, noncurrent versions, or missing lifecycle rules."
+      },
+      {
+        "id": "c",
+        "text": "Review the Amazon S3 checks in AWS Trusted Advisor for each account.",
+        "note": "Trusted Advisor includes a check for buckets without an incomplete multipart upload abort rule, but it does not report storage growth trends, noncurrent version bytes, or lifecycle rule coverage per bucket across the organization."
+      },
+      {
+        "id": "d",
+        "text": "Create an organization-level Amazon S3 Storage Lens dashboard from the management account or a delegated administrator account and enable advanced metrics.",
+        "note": "S3 Storage Lens aggregates storage usage and activity metrics across all accounts and Regions in an organization. It reports items such as incomplete multipart upload and noncurrent version bytes and gives cost optimization recommendations without custom tooling."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "S3 Storage Lens is the organization-wide visibility tool for S3 storage usage and cost efficiency. Cost Explorer shows spend, and S3 Inventory lists objects per bucket; neither gives bucket-level optimization insight across an organization without extra work."
+  },
+  {
+    "id": "cost-4.1-09",
+    "domain": "cost",
+    "services": [
+      "Amazon S3",
+      "S3 Requester Pays"
+    ],
+    "text": "A genomics research institute shares a 2 PB reference dataset in an Amazon S3 bucket with hundreds of research groups at other organizations. Every research group has its own AWS account. Today the groups download the data by assuming an IAM role in the institute's account that grants read access to the bucket. Data transfer and request charges for the downloads now exceed the institute's storage cost.\n\nThe institute wants to keep a single copy of the dataset and stop paying for the downloads.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Enable Requester Pays on the bucket. Keep the existing cross-account IAM role and require the research groups to include the x-amz-request-payer header.",
+        "note": "With Requester Pays, the account that makes the request pays. When a requester assumes an IAM role, the account that owns the role is charged, so downloads through the institute's role are still billed to the institute."
+      },
+      {
+        "id": "b",
+        "text": "Enable Requester Pays on the bucket. Grant the research groups' own AWS accounts read access in the bucket policy and remove the shared IAM role.",
+        "note": "Requests signed with each group's own credentials are billed to that group's account for requests and data transfer, while the institute pays only for storage. The data stays in one bucket."
+      },
+      {
+        "id": "c",
+        "text": "Create an Amazon CloudFront distribution in the institute's account in front of the bucket. Give each research group signed URLs for the objects it needs.",
+        "note": "CloudFront with signed URLs controls who can download, but the distribution owner pays for the data that CloudFront delivers. The institute would still pay for the downloads."
+      },
+      {
+        "id": "d",
+        "text": "Grant the research groups' AWS accounts read access in the bucket policy. Have each group copy the objects it needs into a bucket in its own account.",
+        "note": "Without Requester Pays, the bucket owner still pays for the GET requests and any data transfer out of its bucket. The copies also create hundreds of extra copies of the dataset, which breaks the single-copy requirement."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "S3 Requester Pays shifts request and download charges to the requester's AWS account, but the charge follows the credentials: if requesters assume a role owned by the bucket owner, the bucket owner still pays. Requesters must authenticate with their own accounts and acknowledge the charges with the x-amz-request-payer header; anonymous access is not supported."
+  },
+  {
+    "id": "cost-4.1-10",
+    "domain": "cost",
+    "services": [
+      "Amazon S3",
+      "S3 Lifecycle",
+      "S3 Versioning"
+    ],
+    "text": "A company has an S3 Versioning-enabled bucket that stores application uploads. The application reads current objects frequently and needs millisecond access to them. S3 Storage Lens shows that 35% of the bucket's billed bytes are incomplete multipart uploads from clients that disconnect mid-upload, and another 40% are noncurrent object versions, some several years old. The company must keep the ability to recover an overwritten or deleted object for 30 days.\n\nWhich combination of actions will reduce storage cost the MOST while meeting this requirement? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add an S3 Lifecycle rule that aborts incomplete multipart uploads 7 days after they are initiated.",
+        "note": "Parts of incomplete multipart uploads are billed as storage until the upload is completed or aborted. A lifecycle abort rule deletes these parts automatically and does not affect recovery of objects."
+      },
+      {
+        "id": "b",
+        "text": "Suspend S3 Versioning on the bucket.",
+        "note": "Suspending versioning keeps all existing noncurrent versions, so it does not remove the stored bytes. Later overwrites and deletes replace the null version permanently, so the 30-day recovery requirement would no longer be met."
+      },
+      {
+        "id": "c",
+        "text": "Add an S3 Lifecycle rule that transitions current object versions to S3 Glacier Deep Archive after 1 day.",
+        "note": "This lowers storage price for current versions, but the application needs millisecond access to current objects, and Deep Archive objects must be restored over hours. It also does nothing about incomplete uploads or old noncurrent versions."
+      },
+      {
+        "id": "d",
+        "text": "Enable S3 Object Lock in governance mode with a 30-day default retention period.",
+        "note": "Object Lock prevents deletion or overwrite of versions during retention. It adds protection but does not remove any existing bytes, so it does not reduce storage cost."
+      },
+      {
+        "id": "e",
+        "text": "Add an S3 Lifecycle rule that permanently deletes noncurrent versions 30 days after they become noncurrent.",
+        "note": "A NoncurrentVersionExpiration action removes old versions after the 30-day recovery window. This deletes years of noncurrent bytes while preserving the required recovery period."
+      }
+    ],
+    "correct": [
+      "a",
+      "e"
+    ],
+    "explanation": "Two hidden S3 cost drivers are incomplete multipart upload parts and noncurrent versions in versioned buckets. Lifecycle rules handle both: AbortIncompleteMultipartUpload and NoncurrentVersionExpiration set to the required recovery window."
+  },
+  {
+    "id": "cost-4.1-11",
+    "domain": "cost",
+    "services": [
+      "Amazon S3",
+      "S3 One Zone-IA"
+    ],
+    "text": "A photo sharing application stores original images in S3 Standard. The application also generates resized thumbnails of about 300 KB each, which it can regenerate from the originals at any time. Each thumbnail is requested about once a month, and it must be served in milliseconds when requested. The company wants to minimize the storage cost of the thumbnails.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Store the thumbnails in S3 Standard-Infrequent Access.",
+        "note": "Standard-IA provides millisecond access for infrequently accessed data across multiple Availability Zones. It meets the access requirement but costs more than a single-AZ class, and the extra resilience is unnecessary for re-creatable data."
+      },
+      {
+        "id": "b",
+        "text": "Store the thumbnails in S3 Glacier Flexible Retrieval.",
+        "note": "Glacier Flexible Retrieval has very low storage cost, but objects must be restored before access, which takes minutes to hours. It does not meet the millisecond requirement."
+      },
+      {
+        "id": "c",
+        "text": "Store the thumbnails in S3 One Zone-Infrequent Access.",
+        "note": "One Zone-IA costs about 20% less than Standard-IA and still provides millisecond access. Data is stored in one Availability Zone, which is acceptable because the thumbnails can be regenerated from the originals."
+      },
+      {
+        "id": "d",
+        "text": "Store the thumbnails in S3 Intelligent-Tiering.",
+        "note": "Intelligent-Tiering suits unknown access patterns. Here the pattern is known, and with monthly access the objects stay in tiers priced like Standard or Standard-IA while also incurring a per-object monitoring fee."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "S3 One Zone-IA is the cheapest instant-access class for infrequently accessed data that is easy to re-create, such as thumbnails or transcoded media. Choose Standard-IA when the data must survive the loss of an Availability Zone."
+  },
+  {
+    "id": "cost-4.1-12",
+    "domain": "cost",
+    "services": [
+      "Amazon S3",
+      "S3 Glacier Instant Retrieval",
+      "S3 Lifecycle"
+    ],
+    "text": "A hospital stores medical images in Amazon S3 Standard. Images are viewed frequently for 60 days after a scan. After that, each image is viewed about once each quarter, when a physician opens a patient's history, and the image must load in milliseconds. Images must be kept for 10 years.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an S3 Lifecycle rule that transitions images to S3 Glacier Instant Retrieval after 60 days and expires them after 10 years.",
+        "note": "Glacier Instant Retrieval offers millisecond access at a lower storage price than Standard-IA. It is designed for long-lived data that is accessed about once a quarter, which matches this pattern."
+      },
+      {
+        "id": "b",
+        "text": "Create an S3 Lifecycle rule that transitions images to S3 Standard-Infrequent Access after 60 days and expires them after 10 years.",
+        "note": "Standard-IA provides millisecond access, but its storage price is higher than Glacier Instant Retrieval. For data read about once a quarter, Glacier Instant Retrieval costs less overall."
+      },
+      {
+        "id": "c",
+        "text": "Create an S3 Lifecycle rule that transitions images to S3 Glacier Flexible Retrieval after 60 days and use Expedited retrievals when physicians open an image.",
+        "note": "Expedited retrievals take 1 to 5 minutes and add per-request and per-GB charges. They do not provide millisecond access."
+      },
+      {
+        "id": "d",
+        "text": "Create an S3 Lifecycle rule that transitions images to S3 Glacier Deep Archive after 60 days and expires them after 10 years.",
+        "note": "Deep Archive has the lowest storage price, but retrievals take up to 12 hours or more. It cannot meet the millisecond access requirement."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "S3 Glacier Instant Retrieval is for archive data that still needs millisecond access, typically read about once a quarter. Compared with Standard-IA it has lower storage cost and higher retrieval cost, so it wins when access is rare."
+  },
+  {
+    "id": "cost-4.1-13",
+    "domain": "cost",
+    "services": [
+      "Amazon S3",
+      "S3 Lifecycle"
+    ],
+    "text": "A company stores application logs in Amazon S3 Standard. Logs are queried frequently for the first 30 days. Until they are 90 days old, they are then queried a few times for incident reviews, and those queries need millisecond access. After 90 days, logs are kept only for compliance until they are 7 years old, and retrieval within 48 hours is acceptable. Logs must then be deleted.\n\nThe company wants to manage the logs with a single S3 Lifecycle rule.\n\nWhich S3 Lifecycle rule will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Transition objects to S3 Glacier Instant Retrieval after 30 days, to S3 Glacier Deep Archive after 90 days, and expire them after 2,555 days.",
+        "note": "Glacier Instant Retrieval has a 90-day minimum storage duration, and a single lifecycle rule cannot transition objects out of a class before that minimum has passed. The Deep Archive transition would have to be at day 120 or later, so this rule is rejected as configured."
+      },
+      {
+        "id": "b",
+        "text": "Transition objects to S3 Glacier Flexible Retrieval after 30 days, to S3 Glacier Deep Archive after 90 days, and expire them after 2,555 days.",
+        "note": "Glacier Flexible Retrieval requires a restore before objects can be read, which takes minutes to hours. It does not meet the millisecond access requirement for incident reviews before day 90."
+      },
+      {
+        "id": "c",
+        "text": "Transition objects to S3 Standard-Infrequent Access after 30 days, to S3 Glacier Flexible Retrieval after 90 days, and expire them after 2,555 days.",
+        "note": "This rule is valid and meets the access requirements, but Glacier Flexible Retrieval costs more to store than Deep Archive. The 48-hour retrieval tolerance allows the cheaper class for the 7-year compliance period."
+      },
+      {
+        "id": "d",
+        "text": "Transition objects to S3 Standard-Infrequent Access after 30 days, to S3 Glacier Deep Archive after 90 days, and expire them after 2,555 days.",
+        "note": "Standard-IA keeps millisecond access for occasional reviews and satisfies its 30-day minimum before the day-90 transition. Deep Archive is the cheapest class for compliance data that can wait up to 48 hours, and the rule deletes the logs after 7 years."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Within one lifecycle rule, objects must stay in a class for its minimum storage duration before the next transition: 30 days for Standard-IA, 90 days for Glacier Instant Retrieval and Flexible Retrieval. A 60-day stay fits Standard-IA but not Glacier Instant Retrieval. Then choose the cheapest class whose retrieval time fits each phase: Deep Archive for 48-hour compliance retrieval."
+  },
+  {
+    "id": "cost-4.1-14",
+    "domain": "cost",
+    "services": [
+      "AWS Storage Gateway",
+      "Amazon S3",
+      "S3 Glacier Deep Archive"
+    ],
+    "text": "A company backs up its on-premises servers with commercial backup software that writes to a physical tape library. Tapes are shipped weekly to an offsite vault, and the company must keep backups for 7 years. Restores of backups older than 1 month are rare and can take up to 2 days. The company wants to stop using physical tapes without changing its backup software workflow and wants to minimize storage cost.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Deploy an AWS Storage Gateway S3 File Gateway. Reconfigure the backup software to write backup files to an SMB share stored in S3 Standard.",
+        "note": "S3 File Gateway presents an NFS or SMB file share, so the backup jobs must be reconfigured from tape to disk targets. S3 Standard is also not the lowest-cost class for 7-year retention."
+      },
+      {
+        "id": "b",
+        "text": "Deploy an AWS Storage Gateway Tape Gateway. Have the backup software write to virtual tapes and archive the tapes to S3 Glacier Deep Archive.",
+        "note": "Tape Gateway presents a virtual tape library that existing backup software uses without workflow changes. Archived virtual tapes in S3 Glacier Deep Archive have the lowest storage cost and are retrieved within hours, which fits the 2-day restore window."
+      },
+      {
+        "id": "c",
+        "text": "Deploy an AWS Storage Gateway Volume Gateway in stored mode. Back up to the iSCSI volumes and keep EBS snapshots of the volumes for 7 years.",
+        "note": "Volume Gateway presents iSCSI block volumes, so the backup jobs must be reconfigured away from tape, and snapshots kept for 7 years cost more than archived tapes in Deep Archive."
+      },
+      {
+        "id": "d",
+        "text": "Order an AWS Snowball Edge device each week. Copy the backups to the device and ship it to AWS for import into S3 Glacier Deep Archive.",
+        "note": "This still relies on weekly physical shipping and requires changing the backup workflow to copy data onto devices. It does not eliminate the physical media process."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Tape Gateway replaces physical tape libraries with virtual tapes that existing backup software recognizes, archiving them to S3 Glacier Flexible Retrieval or Deep Archive. Choose File Gateway for file shares and Volume Gateway for iSCSI block storage."
+  },
+  {
+    "id": "cost-4.1-15",
+    "domain": "cost",
+    "services": [
+      "Amazon EBS",
+      "Amazon EC2"
+    ],
+    "text": "A company runs a log analytics cluster of Amazon EC2 instances. Each instance has a 14 TB data volume that the application reads and writes in large sequential blocks at a sustained 450 MiB/s. The volumes are not boot volumes, and the workload is not sensitive to I/O latency. The company currently uses General Purpose SSD (gp3) volumes with provisioned throughput and wants to reduce cost.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Keep the gp3 volumes and lower the provisioned IOPS to the 3,000 IOPS baseline.",
+        "note": "This can trim the IOPS charge, but gp3 storage still costs much more per GB than HDD volumes for 14 TB of sequential data. It is not the most cost-effective option."
+      },
+      {
+        "id": "b",
+        "text": "Change the data volumes to Cold HDD (sc1).",
+        "note": "sc1 has the lowest price per GB, but its throughput is capped at 250 MiB/s per volume. It cannot sustain the required 450 MiB/s."
+      },
+      {
+        "id": "c",
+        "text": "Change the data volumes to Throughput Optimized HDD (st1).",
+        "note": "st1 is designed for large sequential workloads such as log processing and supports up to 500 MiB/s per volume. A 14 TB volume has enough baseline throughput, and st1 costs far less per GB than gp3."
+      },
+      {
+        "id": "d",
+        "text": "Change the data volumes to Provisioned IOPS SSD (io2) with enough IOPS for the workload.",
+        "note": "io2 is for latency-sensitive, IOPS-heavy workloads and charges for storage and provisioned IOPS. It costs more than gp3, not less."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "For large, sequential, throughput-bound data that is not a boot volume, st1 is the cost-effective EBS choice. sc1 is cheaper but caps at 250 MiB/s and suits cold data; SSD types pay for IOPS performance the workload does not need."
+  },
+  {
+    "id": "cost-4.1-16",
+    "domain": "cost",
+    "services": [
+      "Amazon EFS"
+    ],
+    "text": "A software company gives each development team an Amazon EFS file system that uses the Regional (multi-AZ) file system type. The development environments run in a single Availability Zone, the files are read and written throughout every workday, and all data can be re-created from source control and CI pipelines. The applications require a POSIX-compliant NFS file system. The company wants to reduce storage cost for these environments.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create EFS One Zone file systems in the Availability Zone where the development environments run, and move the team data to them.",
+        "note": "EFS One Zone stores data in a single Availability Zone at a significantly lower price than Regional file systems. Single-AZ resilience is acceptable because the data is re-creatable and the environments run in one AZ."
+      },
+      {
+        "id": "b",
+        "text": "Keep the Regional file systems and add a lifecycle policy that transitions files to Infrequent Access after 7 days without access.",
+        "note": "Files that are used every workday rarely go 7 days without access, so few would transition, and any reads from Infrequent Access add per-GB access charges. This saves little."
+      },
+      {
+        "id": "c",
+        "text": "Replace the file systems with io2 EBS volumes that use Multi-Attach to share data between instances.",
+        "note": "EBS Multi-Attach requires a cluster-aware file system and works only within one AZ for io1 and io2 volumes. io2 volumes are expensive, and this does not provide an NFS file system."
+      },
+      {
+        "id": "d",
+        "text": "Move the data to Amazon S3 Standard and mount the buckets on the instances with Mountpoint for Amazon S3.",
+        "note": "Mountpoint for Amazon S3 does not provide full POSIX semantics, such as in-place file edits and renames. It does not meet the requirement for a POSIX-compliant NFS file system."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "EFS One Zone trades multi-AZ durability for a much lower price and fits dev/test or re-creatable data used in one AZ. EFS lifecycle tiering to Infrequent Access only helps data that is actually cold."
+  },
+  {
+    "id": "cost-4.1-17",
+    "domain": "cost",
+    "services": [
+      "Amazon S3",
+      "S3 Replication",
+      "S3 Glacier Deep Archive"
+    ],
+    "text": "A financial company stores write-once trade records in an S3 bucket in us-east-1. A regulator requires a copy of every new record in a second AWS Region. The copy will be read only if us-east-1 becomes unavailable, and in that case the company may take up to 24 hours to access it. The company wants to minimize the cost of the second copy.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure S3 Same-Region Replication to a second bucket and set the destination storage class to S3 Glacier Deep Archive.",
+        "note": "Same-Region Replication copies objects to a bucket in the same Region. It does not satisfy the regulatory requirement for a copy in a second Region."
+      },
+      {
+        "id": "b",
+        "text": "Configure S3 Cross-Region Replication to a bucket in us-west-2 and set the destination storage class to S3 Standard-Infrequent Access.",
+        "note": "This creates the required copy with instant access, but Standard-IA storage costs far more than an archive class. Instant access is not needed given the 24-hour tolerance."
+      },
+      {
+        "id": "c",
+        "text": "Run a nightly S3 Batch Operations job that copies new objects to a bucket in us-west-2 in S3 Standard.",
+        "note": "Batch Operations can copy objects across Regions, but the company must manage the nightly job and its manifests, and S3 Standard is the most expensive storage class for a copy that is rarely read."
+      },
+      {
+        "id": "d",
+        "text": "Configure S3 Cross-Region Replication to a bucket in us-west-2 and set the destination storage class to S3 Glacier Deep Archive.",
+        "note": "Cross-Region Replication can write replicas directly in a specified storage class. Deep Archive has the lowest storage cost, and standard retrievals complete within 12 hours, which fits the 24-hour tolerance."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "S3 Replication lets you choose the destination storage class, so a rarely read DR or compliance copy can land directly in an archive class. Match the class to the access tolerance: here 24 hours allows Deep Archive."
+  },
+  {
+    "id": "cost-4.1-18",
+    "domain": "cost",
+    "services": [
+      "AWS Storage Gateway",
+      "Amazon S3"
+    ],
+    "text": "A company's branch office has an on-premises NAS that serves an SMB file share to 200 Windows users. The share holds 80 TB and grows by 2 TB each month, and the NAS is almost full. Files older than 6 months are rarely opened, but users must still be able to open any file from the same share. Recently used files must open with low latency. The company wants to avoid buying more on-premises storage and to minimize cost.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Deploy an Amazon FSx for Windows File Server Multi-AZ file system with 100 TB of SSD storage, join it to the company's domain, and have users map the share over the WAN.",
+        "note": "FSx for Windows File Server provides a native SMB share, but 100 TB of SSD storage in a Multi-AZ file system costs much more than object storage for mostly cold files, and every access crosses the WAN without a local cache."
+      },
+      {
+        "id": "b",
+        "text": "Deploy an Amazon S3 File Gateway with an SMB share and a local cache. Add an S3 Lifecycle rule that transitions objects to S3 Standard-IA after 6 months.",
+        "note": "S3 File Gateway serves an SMB share backed by Amazon S3 and caches recently used data locally for low latency. Lifecycle tiering to Standard-IA lowers the cost of older files while they remain accessible through the share."
+      },
+      {
+        "id": "c",
+        "text": "Deploy an AWS Storage Gateway Volume Gateway in cached mode and present iSCSI volumes to the users' workstations.",
+        "note": "Volume Gateway presents iSCSI block volumes, not an SMB file share. Users could not keep using the same shared folder without adding and managing a Windows file server."
+      },
+      {
+        "id": "d",
+        "text": "Use AWS DataSync to move files older than 6 months to S3 Glacier Deep Archive and delete them from the NAS.",
+        "note": "This frees NAS space cheaply, but moved files disappear from the share and must be restored over hours before use. Users could no longer open any file from the same share."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "S3 File Gateway extends an on-premises SMB or NFS share into Amazon S3, with a local cache for hot data and S3 Lifecycle for cold data. Avoid lifecycle transitions to Glacier Flexible Retrieval or Deep Archive behind a file gateway, because those objects must be restored before the gateway can read them."
+  }
+]

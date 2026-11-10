@@ -1,0 +1,632 @@
+[
+  {
+    "id": "cost-4.4-01",
+    "domain": "cost",
+    "services": [
+      "VPC",
+      "NAT gateway",
+      "VPC endpoints",
+      "S3"
+    ],
+    "text": "A company runs a data processing application on Amazon EC2 instances in private subnets. The instances read and write about 60 TB each month to Amazon S3 buckets in the same AWS Region. All traffic to S3 currently flows through NAT gateways, and NAT gateway data processing charges have become a large part of the bill. The instances still need outbound internet access for software updates.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an interface VPC endpoint for Amazon S3 in each private subnet. Use the endpoint DNS names in the application.",
+        "note": "An interface endpoint keeps S3 traffic off the NAT gateways, but interface endpoints have hourly charges per Availability Zone and per-GB processing charges. A gateway endpoint does the same job with no charge."
+      },
+      {
+        "id": "b",
+        "text": "Replace the NAT gateways with NAT instances on small EC2 instances.",
+        "note": "NAT instances avoid NAT gateway processing charges but must carry 60 TB each month, which requires larger instances, and the company must manage their patching, scaling, and failover."
+      },
+      {
+        "id": "c",
+        "text": "Create a gateway VPC endpoint for Amazon S3 and add it to the route tables of the private subnets. Keep the NAT gateways for internet traffic.",
+        "note": "Gateway endpoints for S3 have no hourly or data processing charges. Adding the endpoint to the private route tables sends S3 traffic directly to S3, while NAT gateways continue to handle software updates."
+      },
+      {
+        "id": "d",
+        "text": "Move the EC2 instances to public subnets and assign public IP addresses so that they reach S3 through an internet gateway.",
+        "note": "This avoids NAT charges but exposes the instances to the internet, which weakens the security design. A gateway endpoint removes the cost without that exposure."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "S3 and DynamoDB are the only services with gateway endpoints, and gateway endpoints are free. Interface endpoints for S3 exist and are needed for access from on premises or other Regions, but they cost money per hour and per GB. Removing S3 traffic from NAT gateways is one of the most common network cost wins."
+  },
+  {
+    "id": "cost-4.4-02",
+    "domain": "cost",
+    "services": [
+      "ECR",
+      "VPC endpoints",
+      "NAT gateway",
+      "S3",
+      "ECS"
+    ],
+    "text": "A company runs Amazon ECS tasks in private subnets. The tasks are replaced often, and each new task pulls container images of several gigabytes from Amazon ECR in the same AWS Region. All image pulls go through NAT gateways, and the NAT gateway data processing charges have grown sharply. The tasks must keep their NAT gateway route for calls to an external partner API.\n\nA new security rule requires that image pull traffic must not pass through the NAT gateways.\n\nWhich combination of steps will meet these requirements MOST cost-effectively? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create interface VPC endpoints for the Amazon ECR API (com.amazonaws.region.ecr.api) and the Docker registry (com.amazonaws.region.ecr.dkr) with private DNS enabled.",
+        "note": "The ecr.api and ecr.dkr endpoints carry the ECR API calls, authentication, and image manifests privately. Without them, this part of every pull still goes through the NAT gateways, which breaks the security rule."
+      },
+      {
+        "id": "b",
+        "text": "Create an interface VPC endpoint for Amazon S3 for the image layer downloads.",
+        "note": "An interface endpoint for S3 would carry the layer downloads privately, but it adds hourly and per-GB processing charges. The S3 gateway endpoint carries the same traffic at no charge."
+      },
+      {
+        "id": "c",
+        "text": "Add a NAT gateway in each Availability Zone so that tasks use the NAT gateway in their own Availability Zone.",
+        "note": "Zonal NAT gateways avoid cross-AZ data transfer and improve resilience, but every image byte would still incur NAT gateway processing charges."
+      },
+      {
+        "id": "d",
+        "text": "Create a gateway VPC endpoint for Amazon S3 and associate it with the private subnet route tables.",
+        "note": "Amazon ECR stores image layers in Amazon S3. A gateway endpoint for S3 carries the large layer downloads with no hourly or data processing charge."
+      },
+      {
+        "id": "e",
+        "text": "Peer the VPC with a shared services VPC that has its own NAT gateways and route image pulls through the peering connection.",
+        "note": "VPC peering does not support edge-to-edge routing through a peer's NAT gateway. Even if it did, the traffic would still incur NAT processing charges."
+      }
+    ],
+    "correct": [
+      "a",
+      "d"
+    ],
+    "explanation": "Fully private ECR pulls need the ecr.api and ecr.dkr interface endpoints plus an S3 endpoint for the image layers, which make up most of the bytes. The free S3 gateway endpoint is the cost-optimal choice for the layers. Interface endpoints are justified here because the security rule requires that no part of the pull uses the NAT gateways."
+  },
+  {
+    "id": "cost-4.4-03",
+    "domain": "cost",
+    "services": [
+      "EC2",
+      "Placement groups",
+      "Data transfer"
+    ],
+    "text": "A company runs a nightly distributed analytics job on 40 Amazon EC2 instances. During the job, the instances exchange about 300 TB of shuffle data with each other over their private IP addresses. The instances are currently spread across three Availability Zones, and inter-AZ data transfer charges now exceed the compute cost. The job is fault tolerant: if it fails, it can be rerun the next morning with no business impact.\n\nWhich solution will reduce the data transfer cost MOST?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Launch all 40 instances for the job into a cluster placement group in a single Availability Zone.",
+        "note": "Data transfer between instances in the same Availability Zone over private IP addresses has no charge, so the shuffle traffic becomes free. A cluster placement group holds any number of instances and also lowers latency. The job can be rerun if the zone has a problem."
+      },
+      {
+        "id": "b",
+        "text": "Launch all 40 instances for the job into a spread placement group in a single Availability Zone.",
+        "note": "A single Availability Zone would remove the inter-AZ charges, but a spread placement group allows at most seven running instances per Availability Zone. The 40-instance job cannot launch this way."
+      },
+      {
+        "id": "c",
+        "text": "Launch the instances into a partition placement group with partitions in each of the three Availability Zones.",
+        "note": "Partition placement groups isolate groups of instances on separate racks and can span Availability Zones. The instances stay in three zones, so the shuffle traffic still incurs inter-AZ charges."
+      },
+      {
+        "id": "d",
+        "text": "Replace the 40 instances with 10 larger instances that have four times the vCPUs each, still across three Availability Zones.",
+        "note": "Fewer, larger instances keep more of the shuffle on each host, but most data still crosses zones and is charged in both directions. It reduces the charges less than moving to one zone."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Same-AZ traffic over private IPs is free, so moving a rerunnable batch job into one Availability Zone removes the transfer charge entirely. The placement strategy then matters: cluster groups hold large fleets close together, spread groups cap at seven instances per zone, and partition groups can still span zones."
+  },
+  {
+    "id": "cost-4.4-04",
+    "domain": "cost",
+    "services": [
+      "S3",
+      "S3 Replication",
+      "S3 Multi-Region Access Points",
+      "Data transfer"
+    ],
+    "text": "A company's analytics application runs on Amazon EC2 in us-west-2. Ten times a day, the application reads the same 2 TB dataset from an S3 bucket in eu-central-1. A partner adds new objects to the dataset each night. The cross-Region data transfer charges are now the largest item on the bill. The application cannot be moved out of us-west-2.\n\nWhich solution will reduce data transfer costs MOST?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Enable S3 Transfer Acceleration on the eu-central-1 bucket, and change the application to read through the accelerate endpoint.",
+        "note": "Transfer Acceleration speeds up long-distance transfers through edge locations, but it adds a per-GB charge on top of data transfer. Each of the 10 daily reads would still transfer the full dataset across Regions."
+      },
+      {
+        "id": "b",
+        "text": "Create a gateway VPC endpoint for Amazon S3 in the us-west-2 VPC, and add it to the route tables of the private subnets.",
+        "note": "Gateway endpoints reach S3 only in the same Region as the VPC. They cannot carry traffic to a bucket in eu-central-1."
+      },
+      {
+        "id": "c",
+        "text": "Create an S3 Multi-Region Access Point for the eu-central-1 bucket, and change the application to read through the access point.",
+        "note": "A Multi-Region Access Point routes requests to the closest of its buckets. With only the eu-central-1 bucket, every read still crosses Regions and adds a per-GB data routing charge."
+      },
+      {
+        "id": "d",
+        "text": "Copy the dataset once to a bucket in us-west-2, replicate new objects with S3 Cross-Region Replication, and read from that bucket.",
+        "note": "The company pays cross-Region transfer once per object instead of ten times a day. Reads from a bucket in the same Region as the EC2 instances have no data transfer charge."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Repeated cross-Region reads multiply transfer charges; replicating the data once to the consuming Region pays the charge only once. Gateway endpoints are Regional, which is a common trap. Transfer Acceleration and Multi-Region Access Points change how requests are routed, but they do not reduce the bytes that cross Regions unless a copy of the data exists closer to the reader."
+  },
+  {
+    "id": "cost-4.4-05",
+    "domain": "cost",
+    "services": [
+      "CloudFront",
+      "S3"
+    ],
+    "text": "A software company distributes installer files of 1 GB to 4 GB from an Amazon S3 bucket in us-east-1. Customers download the files directly from S3 by using public URLs, about 500 TB each month. Most downloads are of the five latest installers. The customers are in North America, Europe, Japan, Australia, and Brazil, and the company has large customer bases in each. The company wants to reduce data transfer costs and must improve download speed for customers in every one of these locations.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Enable S3 Transfer Acceleration on the bucket and give customers the accelerate endpoint URLs.",
+        "note": "Transfer Acceleration improves long-distance transfer speed but adds a per-GB fee on top of S3 data transfer out. It does not cache, so costs would rise."
+      },
+      {
+        "id": "b",
+        "text": "Create a CloudFront distribution with the bucket as the origin through origin access control, and use Price Class All.",
+        "note": "Origin fetches from S3 to CloudFront are free and the popular installers are cached at the edge. Price Class All includes edge locations in South America and Australia, so customers in Brazil and Australia also get faster downloads."
+      },
+      {
+        "id": "c",
+        "text": "Create a CloudFront distribution with the bucket as the origin through origin access control, and use Price Class 200.",
+        "note": "Price Class 200 includes Japan but excludes South America and Australia. Customers in Brazil and Australia would be served from more distant edges, which does not meet the speed requirement for them."
+      },
+      {
+        "id": "d",
+        "text": "Create a CloudFront distribution with the bucket as the origin through origin access control, and use Price Class 100.",
+        "note": "Price Class 100 has the lowest cost but uses only edge locations in North America, Europe, and Israel. Customers in Japan, Australia, and Brazil would not see the required speed improvement."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "CloudFront cuts S3 egress cost for widely downloaded content because origin fetches are free and cached objects are served from the edge. Price classes trade cost for reach: lower classes exclude expensive edges, and viewers in excluded areas get slower performance. When every listed location needs faster downloads, choose the cheapest price class that covers all of them."
+  },
+  {
+    "id": "cost-4.4-06",
+    "domain": "cost",
+    "services": [
+      "Direct Connect",
+      "Site-to-Site VPN",
+      "Data transfer"
+    ],
+    "text": "A media company sends about 400 TB each month from AWS to its on-premises studios, and about 50 TB from the studios to AWS. Transfers run continuously, and the company needs consistent throughput of at least 5 Gbps. Today the traffic uses AWS Site-to-Site VPN over the internet, and both the data transfer out charges and the throughput variability are causing problems.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add more Site-to-Site VPN tunnels and use ECMP across them on an AWS Transit Gateway to increase bandwidth.",
+        "note": "ECMP over multiple tunnels increases aggregate bandwidth, but the traffic still crosses the internet with variable throughput and is billed at internet data transfer out rates."
+      },
+      {
+        "id": "b",
+        "text": "Enable acceleration on the Site-to-Site VPN connections.",
+        "note": "Accelerated VPN uses the AWS global network to improve performance, but it adds charges and the traffic is still billed at internet data transfer out rates."
+      },
+      {
+        "id": "c",
+        "text": "Ship the outbound data each week by using AWS Snowball Edge devices.",
+        "note": "Snowball suits one-time or periodic bulk transfers, but these transfers run continuously. Weekly shipments would add days of delay."
+      },
+      {
+        "id": "d",
+        "text": "Provision a 10 Gbps AWS Direct Connect dedicated connection and send the traffic over it.",
+        "note": "Direct Connect gives consistent private bandwidth, and data transferred out over Direct Connect is billed at a lower per-GB rate than internet data transfer out. At 400 TB each month, the savings outweigh the port-hour charges."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "For large, continuous outbound volumes, Direct Connect lowers data transfer out rates and provides consistent throughput. VPN is cheaper to start and fine for low volumes, but it is billed at internet egress rates. Data into AWS is free on both, so outbound volume drives the decision."
+  },
+  {
+    "id": "cost-4.4-07",
+    "domain": "cost",
+    "services": [
+      "Site-to-Site VPN",
+      "Transit Gateway",
+      "Direct Connect"
+    ],
+    "text": "A retail company is opening a small regional office that needs encrypted access to applications in one VPC. The office will transfer about 50 GB each month. Throughput of 100 Mbps is enough, and occasional internet variability is acceptable. The office router supports IPsec and BGP. The office opens in 10 days, and the connection must be ready by then. The company has no plans to connect other VPCs.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an AWS Site-to-Site VPN connection between a virtual private gateway on the VPC and the office router.",
+        "note": "A Site-to-Site VPN on a virtual private gateway is encrypted, can be ready within hours, and has only the VPN connection-hour and data transfer out charges. It fits one VPC with small volumes and tolerance for internet variability."
+      },
+      {
+        "id": "b",
+        "text": "Create a transit gateway attached to the VPC, then create an accelerated Site-to-Site VPN connection on it.",
+        "note": "Accelerated VPN routes traffic through AWS Global Accelerator for more consistent performance and is supported only on transit gateways. It adds acceleration charges and transit gateway charges that the company does not need."
+      },
+      {
+        "id": "c",
+        "text": "Create a transit gateway attached to the VPC, then create a Site-to-Site VPN connection on it.",
+        "note": "This works, but a transit gateway adds an hourly charge for each attachment and a per-GB data processing charge. With one VPC and no plans for more, a virtual private gateway is cheaper."
+      },
+      {
+        "id": "d",
+        "text": "Order a 100 Mbps AWS Direct Connect hosted connection from a partner and run a VPN over it.",
+        "note": "A hosted connection gives consistent performance, but partner provisioning usually takes longer than 10 days, and it adds port-hour and partner charges that 50 GB each month does not justify."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "For one VPC, terminate Site-to-Site VPN on a virtual private gateway: a transit gateway adds attachment and data processing charges that pay off only when many VPCs or networks share it. Accelerated VPN, available only on transit gateways, is for when internet variability is not acceptable."
+  },
+  {
+    "id": "cost-4.4-08",
+    "domain": "cost",
+    "services": [
+      "VPC peering",
+      "Transit Gateway",
+      "PrivateLink"
+    ],
+    "text": "A company has two VPCs in the same AWS Region and account: one for an application tier and one for a data tier. The VPCs have non-overlapping CIDR ranges and exchange about 200 TB of traffic each month, and applications in each VPC initiate connections to the other. No other VPCs or on-premises networks need to connect to them, and no transitive routing is required.\n\nWhich solution will provide connectivity MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an AWS Transit Gateway and attach both VPCs.",
+        "note": "Transit Gateway works but charges per attachment per hour and a per-GB data processing fee. At 200 TB each month, the processing fee alone is significant, and no transitive routing is needed."
+      },
+      {
+        "id": "b",
+        "text": "Expose the data tier through an AWS PrivateLink endpoint service and create interface endpoints in the application VPC.",
+        "note": "PrivateLink suits one-way access to specific services: only the consumer VPC can initiate connections. It adds hourly endpoint charges and per-GB processing charges, so it fails both the two-way requirement and the cost goal."
+      },
+      {
+        "id": "c",
+        "text": "Create a VPC peering connection between the two VPCs and update the route tables.",
+        "note": "VPC peering has no hourly charge and no data processing charge. Traffic that stays within an Availability Zone over peering is free, and only standard inter-AZ rates apply otherwise."
+      },
+      {
+        "id": "d",
+        "text": "Deploy a software VPN appliance on Amazon EC2 in the application VPC, and create a Site-to-Site VPN connection to a virtual private gateway on the data VPC.",
+        "note": "A VPN between VPCs adds hourly VPN charges, appliance instances to manage, and a throughput limit of about 1.25 Gbps per tunnel. It is not cost-effective for 200 TB each month."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "For a small number of VPCs with heavy traffic and no transitive routing, VPC peering is the cheapest connectivity option because it has no processing fee. Transit Gateway pays off when many VPCs or hybrid networks need central routing. The per-GB processing fee is the decisive cost difference."
+  },
+  {
+    "id": "cost-4.4-09",
+    "domain": "cost",
+    "services": [
+      "VPC sharing",
+      "AWS RAM",
+      "NAT gateway",
+      "Transit Gateway"
+    ],
+    "text": "A company in AWS Organizations has 12 application teams, each with its own AWS account and VPC. Each VPC has three NAT gateways and a Transit Gateway attachment to reach a shared database VPC, and the teams' applications talk to each other heavily through the transit gateway. All the applications are in the same trust boundary, and each team must keep billing and resource ownership in its own account.\n\nWhich solution will reduce networking costs MOST?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Replace the transit gateway with VPC peering connections between every pair of VPCs, including the database VPC, and keep each VPC's NAT gateways.",
+        "note": "Full-mesh peering removes transit gateway processing charges, but it requires dozens of peering connections and still leaves 36 NAT gateways. It is costly and hard to manage."
+      },
+      {
+        "id": "b",
+        "text": "Share subnets of one central VPC with the application accounts by using AWS RAM, and move the workloads and the shared database into it.",
+        "note": "VPC sharing lets accounts deploy into subnets owned by a central account while each account keeps ownership and billing of its resources. Teams share one set of NAT gateways, and traffic within the VPC needs no transit gateway attachments or processing fees."
+      },
+      {
+        "id": "c",
+        "text": "Keep the separate VPCs, and move all NAT gateways into a central egress VPC that the transit gateway routes internet traffic to.",
+        "note": "Centralized egress reduces the number of NAT gateways, but all traffic between applications and to the internet still pays transit gateway processing charges."
+      },
+      {
+        "id": "d",
+        "text": "Keep the separate VPCs, and replace the three NAT gateways in each VPC with a single NAT gateway per VPC.",
+        "note": "Fewer NAT gateways lower hourly charges, but the transit gateway attachments and processing fees remain. A single NAT gateway also adds cross-AZ charges and a single point of failure in each VPC."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "VPC sharing is the cost answer when many accounts in one organization share a trust boundary: one VPC, one set of NAT gateways, and no transit gateway charges for traffic between accounts. Centralized egress through Transit Gateway helps when VPCs must stay separate. Shared subnets keep ownership and billing per account."
+  },
+  {
+    "id": "cost-4.4-10",
+    "domain": "cost",
+    "services": [
+      "Transit Gateway",
+      "NAT gateway",
+      "VPC peering"
+    ],
+    "text": "A company has 15 VPCs across several accounts. Each VPC has NAT gateways in three Availability Zones for outbound internet access, so the company pays for 45 NAT gateways. The VPCs are already attached to an AWS Transit Gateway for east-west traffic. Security policy requires each workload to stay in its own VPC. Outbound internet traffic is light.\n\nWhich solution will reduce NAT gateway costs MOST while keeping outbound internet access?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an egress VPC with NAT gateways. Peer every workload VPC with the egress VPC and point the default routes at the peering connections.",
+        "note": "VPC peering does not support edge-to-edge routing, so a workload VPC cannot send internet traffic through a NAT gateway in a peered VPC. This design does not work."
+      },
+      {
+        "id": "b",
+        "text": "Replace the NAT gateways in each VPC with NAT instances on small EC2 instances.",
+        "note": "NAT instances can be cheaper per hour, but the company would run 45 instances that it must patch, scale, and make highly available. Centralizing NAT removes most of them instead."
+      },
+      {
+        "id": "c",
+        "text": "Create interface VPC endpoints in every VPC for each internet service that the workloads call.",
+        "note": "Interface endpoints reach AWS services and PrivateLink services, not arbitrary internet destinations. Each endpoint also adds hourly charges in every VPC."
+      },
+      {
+        "id": "d",
+        "text": "Create a central egress VPC with NAT gateways in each AZ, and route each workload VPC's default route through the transit gateway to it.",
+        "note": "Centralized egress through the existing transit gateway replaces 45 NAT gateways with 3. Because internet traffic is light, the added transit gateway processing charges are much smaller than the NAT gateway hourly charges that are removed."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "A centralized egress VPC behind a transit gateway consolidates NAT gateways when VPCs must stay separate. It is cost-effective when internet traffic is light, because transit gateway processing is charged per GB while NAT gateways are charged per hour. Peering cannot be used for this because it does not support transitive or edge-to-edge routing."
+  },
+  {
+    "id": "cost-4.4-11",
+    "domain": "cost",
+    "services": [
+      "AWS Budgets",
+      "Cost allocation tags",
+      "Cost Explorer"
+    ],
+    "text": "A company uses AWS Organizations, and several product teams share the same AWS accounts. Every resource has a team tag that identifies the owning team. Finance wants each team lead to receive an email when that team's spend for the month is forecast to exceed its monthly allowance, before the overspend happens.\n\nWhich combination of steps will meet these requirements with the LEAST operational overhead? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Amazon CloudWatch billing alarm on the EstimatedCharges metric for each team.",
+        "note": "Billing alarms track actual estimated charges for the account or by service. They cannot filter by a resource tag and do not alert on forecasted spend."
+      },
+      {
+        "id": "b",
+        "text": "Create a scheduled AWS Cost Explorer report for each team and email it to the team leads every week.",
+        "note": "Cost Explorer can show spend by tag, but a weekly report does not alert when the forecast crosses a threshold. Team leads would have to watch the numbers themselves."
+      },
+      {
+        "id": "c",
+        "text": "Activate the team tag as a cost allocation tag in the Billing and Cost Management console of the management account.",
+        "note": "A user-defined tag must be activated as a cost allocation tag before AWS cost tools can filter or group costs by it. This is required for per-team budgets."
+      },
+      {
+        "id": "d",
+        "text": "Turn on AWS Trusted Advisor cost optimization checks and send the weekly summary to the team leads.",
+        "note": "Trusted Advisor identifies savings opportunities such as idle resources. It does not track spend against a team's allowance."
+      },
+      {
+        "id": "e",
+        "text": "Create an AWS Budgets cost budget for each team, filtered on the team cost allocation tag, with an alert on forecasted spend that emails the team lead.",
+        "note": "AWS Budgets can filter on cost allocation tags and can alert when forecasted spend is expected to exceed the budget. This gives each team lead an early warning without custom tooling."
+      }
+    ],
+    "correct": [
+      "c",
+      "e"
+    ],
+    "explanation": "Per-team spend control combines cost allocation tags, which make tag-based cost data available, with AWS Budgets, which alerts on actual or forecasted spend. CloudWatch billing alarms are account-level and actual-only. Remember that tags do not appear in billing tools until they are activated as cost allocation tags."
+  },
+  {
+    "id": "cost-4.4-12",
+    "domain": "cost",
+    "services": [
+      "AWS Data Exports",
+      "Cost and Usage Report",
+      "Athena",
+      "S3"
+    ],
+    "text": "A company's FinOps team wants to analyze AWS costs by resource ID at hourly granularity for all 40 accounts in its organization in AWS Organizations. The team writes custom SQL that joins the cost data with an internal project database, and it must keep the detailed history for 3 years. The team does not want to write or run data collection code.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "In each of the 40 member accounts, create a CUR 2.0 export with resource IDs and hourly granularity that delivers to one central S3 bucket.",
+        "note": "Member accounts can create their own exports, and the data would be complete. However, the team must create and maintain 40 exports and add one for every new account, which is more overhead than a single organization-wide export."
+      },
+      {
+        "id": "b",
+        "text": "Schedule an AWS Lambda function that calls the Cost Explorer GetCostAndUsageWithResources API each day and writes the results to Amazon S3.",
+        "note": "This is data collection code that the team does not want to run and maintain. Cost Explorer resource-level data also covers only the past 14 days, so any missed run loses data permanently."
+      },
+      {
+        "id": "c",
+        "text": "In the management account, create a CUR 2.0 export in AWS Data Exports with resource IDs and hourly granularity. Query it with Amazon Athena.",
+        "note": "A CUR 2.0 export from the management account covers every account in the organization at line-item, resource, and hourly level. It is delivered to S3, where it can be kept for 3 years and queried and joined with SQL in Athena."
+      },
+      {
+        "id": "d",
+        "text": "In the management account, turn on hourly and resource-level data in AWS Cost Explorer, and download the filtered results as CSV files each month.",
+        "note": "Cost Explorer resource-level data covers only the past 14 days, so monthly downloads would miss most of the history. The manual downloads are also ongoing work."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "The Cost and Usage Report, delivered through AWS Data Exports, is the source for detailed, long-term, SQL-based cost analysis. One export from the management account covers the whole organization, which beats per-account exports on overhead. Cost Explorer is for interactive analysis and keeps resource-level data for only 14 days."
+  },
+  {
+    "id": "cost-4.4-13",
+    "domain": "cost",
+    "services": [
+      "Trusted Advisor",
+      "Compute Optimizer",
+      "Elastic IP addresses",
+      "Elastic Load Balancing",
+      "EBS"
+    ],
+    "text": "A company has the AWS Business Support+ plan. After a reorganization, many environments were abandoned. The company suspects that it is paying for Classic Load Balancers with no traffic, Elastic IP addresses that are not associated with running instances, and EBS volumes with almost no I/O.\n\nThe company wants an existing AWS service to list all three kinds of resources across its accounts without writing code.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an AWS Budgets cost budget for each account, and investigate the accounts whose spend exceeds their budgets.",
+        "note": "Budgets alerts on spend against a threshold. It does not identify which individual resources are idle."
+      },
+      {
+        "id": "b",
+        "text": "Opt in to AWS Compute Optimizer for the organization, and review its idle resource recommendations for each account.",
+        "note": "Compute Optimizer idle recommendations cover resources such as EC2 instances, EBS volumes, RDS databases, and NAT gateways. They do not cover load balancers or Elastic IP addresses."
+      },
+      {
+        "id": "c",
+        "text": "Review the AWS Trusted Advisor cost optimization checks in the organizational view for the flagged resources.",
+        "note": "Trusted Advisor has cost optimization checks for idle load balancers (Classic Load Balancers), unassociated Elastic IP addresses, and underutilized EBS volumes. Business Support+ includes the full set of checks, and the organizational view covers all accounts."
+      },
+      {
+        "id": "d",
+        "text": "Turn on AWS Config in every account with the eip-attached managed rule, and review the noncompliant resources.",
+        "note": "The eip-attached rule finds unattached Elastic IP addresses, but AWS Config has no managed rule for idle load balancers or low-activity EBS volumes. The company would need custom rules."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Trusted Advisor cost optimization checks flag common sources of waste such as idle Classic Load Balancers, unassociated Elastic IP addresses, and underutilized EBS volumes. Compute Optimizer idle recommendations are the near miss: they cover compute, storage, and databases but not load balancers or Elastic IP addresses. The full set of Trusted Advisor checks requires Business Support+ or higher."
+  },
+  {
+    "id": "cost-4.4-14",
+    "domain": "cost",
+    "services": [
+      "AWS Cost Anomaly Detection",
+      "AWS Budgets",
+      "CloudWatch"
+    ],
+    "text": "A company's AWS spend varies widely from week to week because of seasonal campaigns. Last month, a misconfigured job created an unexpected $40,000 data transfer charge that nobody noticed for two weeks. Budget alerts with fixed amounts produced many false alarms during campaigns.\n\nThe operations team wants to be notified as soon as unusual spend is detected in any AWS service. The team does not want to build or tune alarms for each service.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an AWS Budgets cost budget for each service with forecasted-spend alerts at 100% of the expected monthly amount.",
+        "note": "Forecast alerts warn earlier than actual-spend alerts, but each budget still has a fixed amount that someone must adjust for every campaign. This is the false-alarm problem the company wants to avoid."
+      },
+      {
+        "id": "b",
+        "text": "Create a CloudWatch alarm for each service on the EstimatedCharges billing metric, and use an anomaly detection band as the threshold.",
+        "note": "Anomaly detection bands adapt to patterns, but the team would build and tune one alarm per service. EstimatedCharges is also a month-to-date total that resets each month, which makes the band hard to tune."
+      },
+      {
+        "id": "c",
+        "text": "Create an AWS Cost Anomaly Detection monitor for AWS services, and subscribe the operations team to a weekly summary of anomalies.",
+        "note": "Cost Anomaly Detection is the right service, but a weekly summary could deliver an anomaly up to a week after it is detected. Individual alerts notify the team as soon as an anomaly is found."
+      },
+      {
+        "id": "d",
+        "text": "Create an AWS Cost Anomaly Detection monitor for AWS services, and subscribe the operations team to individual alerts through Amazon SNS.",
+        "note": "Cost Anomaly Detection uses machine learning to learn each service's normal spend, including seasonality, so no thresholds need tuning. Individual alerts are sent as soon as an anomaly is detected."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "AWS Cost Anomaly Detection learns spend patterns per service and alerts on deviations, which suits variable spend where fixed thresholds fail. Alert frequency matters: individual alerts are sent when an anomaly is detected, while daily and weekly summaries batch them. Use AWS Budgets for planned allowances and anomaly detection for surprises."
+  },
+  {
+    "id": "cost-4.4-15",
+    "domain": "cost",
+    "services": [
+      "EC2",
+      "VPC",
+      "Elastic Load Balancing",
+      "Data transfer"
+    ],
+    "text": "A company runs a web tier and a caching tier on Amazon EC2 instances in the same VPC and the same Availability Zone. To simplify configuration, the web servers connect to the cache servers by using the cache servers' Elastic IP addresses. The web tier reads about 80 TB each month from the cache, and the company sees regional data transfer charges for this traffic.\n\nWhich solution will remove these charges MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Release the Elastic IP addresses, assign auto-assigned public IPv4 addresses to the cache servers, and connect to those addresses.",
+        "note": "Auto-assigned public IPv4 addresses are still public addresses. Traffic sent to them is billed as regional data transfer, and every public IPv4 address also has an hourly charge."
+      },
+      {
+        "id": "b",
+        "text": "Place an internal Network Load Balancer in the same Availability Zone in front of the cache servers, and connect to its DNS name.",
+        "note": "An internal load balancer uses private addresses, so the regional data transfer charge goes away. However, the company would pay hourly and capacity unit charges for 80 TB each month that a direct private connection avoids."
+      },
+      {
+        "id": "c",
+        "text": "Launch the web and cache servers in a cluster placement group, and keep connecting to the cache servers' Elastic IP addresses.",
+        "note": "A cluster placement group improves network latency and throughput, but traffic addressed to Elastic IP addresses is still billed as regional data transfer."
+      },
+      {
+        "id": "d",
+        "text": "Change the web servers to connect to the cache servers by using the cache servers' private IP addresses.",
+        "note": "Data transfer between instances in the same Availability Zone over private IP addresses has no charge. The change needs no new resources."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "In-VPC traffic should use private IP addresses: same-AZ traffic over private IPs is free, while traffic to public or Elastic IPs is billed as regional data transfer even within one Availability Zone. A load balancer can also make the path private, but it adds its own charges. This is a frequent hidden cost that a configuration change fixes."
+  },
+  {
+    "id": "cost-4.4-16",
+    "domain": "cost",
+    "services": [
+      "S3",
+      "S3 Requester Pays"
+    ],
+    "text": "A research institute shares a 500 TB genomics dataset from an Amazon S3 bucket. Hundreds of partner organizations download large parts of the dataset. Most partners use their own AWS accounts, but some download anonymously through public object URLs.\n\nThe institute's grant covers only the cost of storing the data, and its data transfer bill is growing quickly. The institute wants each downloader's own AWS bill to show the cost of its downloads, with the least ongoing administration.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Enable Requester Pays on the bucket, and keep a public-read bucket policy so that partners without AWS accounts can still download objects.",
+        "note": "Requester Pays buckets do not allow anonymous requests, because AWS must know which account to bill. Partners without AWS accounts could no longer download, and the design cannot work as described."
+      },
+      {
+        "id": "b",
+        "text": "Create an S3 access point for each partner with an access point policy that allows only that partner's AWS account.",
+        "note": "Access points control who can reach the data, but the bucket owner still pays for requests and data transfer through them. They also add hundreds of policies to manage."
+      },
+      {
+        "id": "c",
+        "text": "Enable Requester Pays on the bucket, and require every partner to send authenticated requests from its own AWS account.",
+        "note": "With Requester Pays, the requester's AWS account pays for requests and data transfer, while the bucket owner pays for storage. Requests must be authenticated, so anonymous partners must start using AWS accounts."
+      },
+      {
+        "id": "d",
+        "text": "Put an Amazon CloudFront distribution in front of the bucket, and require partners to download through signed URLs.",
+        "note": "CloudFront can lower per-GB transfer rates, but the institute still pays for all data transfer. Signed URLs control access, not who is billed."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "S3 Requester Pays moves request and data transfer charges to the requester's AWS account while the owner keeps paying for storage. Requester Pays buckets reject anonymous requests, so every downloader must authenticate with an AWS account. Access points and CloudFront control or speed up access but do not change who pays."
+  },
+  {
+    "id": "cost-4.4-17",
+    "domain": "cost",
+    "services": [
+      "Direct Connect",
+      "Site-to-Site VPN"
+    ],
+    "text": "A company uses one 10 Gbps AWS Direct Connect dedicated connection to reach its VPCs. Over the past year, peak utilization has never exceeded 400 Mbps, and growth is expected to stay below 600 Mbps. The company's compliance policy requires a private connection that does not traverse the public internet.\n\nWhich solution will reduce the connectivity cost MOST while meeting these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Replace the Direct Connect connection with an AWS Site-to-Site VPN connection that uses two IPsec tunnels.",
+        "note": "Site-to-Site VPN is cheaper, but it runs over the public internet. This breaks the compliance requirement for a private connection."
+      },
+      {
+        "id": "b",
+        "text": "Replace the 10 Gbps dedicated connection with a 1 Gbps hosted connection from a Direct Connect Partner.",
+        "note": "Direct Connect port-hour charges scale with port speed. A 1 Gbps hosted connection covers the 600 Mbps growth ceiling at a much lower port-hour rate and stays private."
+      },
+      {
+        "id": "c",
+        "text": "Add a second 10 Gbps dedicated connection, and bundle both connections into a link aggregation group (LAG).",
+        "note": "A LAG adds bandwidth and resilience but doubles the port-hour charges. The company already uses less than 5% of one connection."
+      },
+      {
+        "id": "d",
+        "text": "Keep the 10 Gbps connection and enable Direct Connect SiteLink.",
+        "note": "SiteLink sends traffic between on-premises sites over the AWS network and adds charges. It does not reduce the cost of the existing connection."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Direct Connect port charges depend on capacity, so an overprovisioned port is pure waste. Hosted connections from partners offer smaller capacities such as 500 Mbps or 1 Gbps. VPN is cheaper still but fails any requirement that traffic must not cross the public internet."
+  }
+]

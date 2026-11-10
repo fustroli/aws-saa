@@ -1,0 +1,607 @@
+[
+  {
+    "id": "performant-3.2-01",
+    "domain": "performant",
+    "services": [
+      "Amazon EC2"
+    ],
+    "text": "A research institute runs a computational fluid dynamics simulation on 64 Amazon EC2 instances. The simulation is tightly coupled: every node exchanges boundary data with its neighbours many times each second, and overall runtime is dominated by node-to-node network latency. The institute can rerun a simulation from its last checkpoint if hardware fails.\n\nWhich EC2 placement strategy will provide the HIGHEST network performance for this workload?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Launch the instances into a partition placement group with one partition for every eight instances in a single Availability Zone.",
+        "note": "Partition placement groups place groups of instances on separate racks to limit correlated hardware failure. Instances in different partitions do not share racks, so this strategy does not minimise node-to-node latency."
+      },
+      {
+        "id": "b",
+        "text": "Launch the instances into a cluster placement group in a single Availability Zone by using the same instance type for all nodes.",
+        "note": "A cluster placement group packs instances close together inside one Availability Zone to give the lowest latency and highest per-flow throughput. This matches a tightly coupled workload, and checkpoints cover the higher blast radius."
+      },
+      {
+        "id": "c",
+        "text": "Launch the instances into a spread placement group across three Availability Zones in the same AWS Region.",
+        "note": "Spread placement groups put each instance on distinct hardware and support at most seven running instances per Availability Zone, so 64 nodes do not fit in three AZs. Spreading also increases latency between nodes."
+      },
+      {
+        "id": "d",
+        "text": "Launch the instances without a placement group in an Auto Scaling group that spans three Availability Zones.",
+        "note": "Spreading tightly coupled nodes across Availability Zones adds inter-AZ latency to every boundary exchange. This improves availability, which the institute does not need, at the cost of the performance it does need."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Cluster placement groups give the lowest latency and highest throughput between instances, which is what tightly coupled HPC needs. The institute accepts the reduced fault isolation because it can restart from checkpoints. Remember: cluster = performance, partition = large distributed systems with rack awareness, spread = a few critical instances on distinct hardware."
+  },
+  {
+    "id": "performant-3.2-02",
+    "domain": "performant",
+    "services": [
+      "Amazon EC2"
+    ],
+    "text": "A company is deploying a self-managed Apache Cassandra cluster of 90 Amazon EC2 instances in one AWS Region. Cassandra replicates each row to three nodes and can be configured with rack awareness so that replicas never share a rack. The company wants to reduce the chance that a single hardware failure takes down multiple replicas of the same data.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Launch the instances into a spread placement group in each of three Availability Zones, and map each Availability Zone to a Cassandra rack.",
+        "note": "A spread placement group supports at most seven running instances per Availability Zone, so three AZs can hold only 21 instances. The 90-node cluster does not fit."
+      },
+      {
+        "id": "b",
+        "text": "Launch the instances into a single cluster placement group, and configure Cassandra to use a simple snitch without rack awareness.",
+        "note": "A cluster placement group packs instances close together for low latency. Replicas could share the same underlying hardware, which increases rather than reduces correlated failure risk."
+      },
+      {
+        "id": "c",
+        "text": "Launch the instances into a partition placement group with three partitions, and map each partition to a Cassandra rack by using the partition number from instance metadata.",
+        "note": "Partition placement groups place each partition on its own set of racks and expose the partition number through instance metadata. Topology-aware software such as Cassandra can then keep replicas in separate partitions, and the group scales to hundreds of instances."
+      },
+      {
+        "id": "d",
+        "text": "Launch the instances on Dedicated Hosts, and allocate one Dedicated Host for each Cassandra rack.",
+        "note": "Dedicated Hosts give physical server isolation for licensing and compliance. They do not provide rack-level placement guarantees for a 90-node cluster and add significant cost and host management."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Partition placement groups are designed for large distributed and replicated workloads such as HDFS, HBase, Kafka and Cassandra. Each partition uses separate racks, and the application can read the partition number to place replicas. Spread groups give stronger isolation but are capped at seven instances per AZ."
+  },
+  {
+    "id": "performant-3.2-03",
+    "domain": "performant",
+    "services": [
+      "Amazon EC2"
+    ],
+    "text": "A financial services company runs a primary-secondary pair of licensed matching-engine servers plus three supporting coordinator nodes on Amazon EC2 in a single Availability Zone. The application requires all five instances to be in the same Availability Zone. Each instance is critical, and the company wants to minimise the risk that one underlying hardware failure affects more than one instance.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Launch the five instances into a spread placement group in the Availability Zone.",
+        "note": "A spread placement group places every instance on distinct underlying hardware with its own power and network. Five instances fit within the limit of seven per Availability Zone, so no single hardware failure can affect two of them."
+      },
+      {
+        "id": "b",
+        "text": "Launch the five instances into a partition placement group with two partitions in the Availability Zone.",
+        "note": "A partition placement group isolates groups of instances by rack, but instances inside the same partition can share hardware. With five instances in two partitions, one failure could affect several instances."
+      },
+      {
+        "id": "c",
+        "text": "Launch the five instances into a cluster placement group in the Availability Zone.",
+        "note": "A cluster placement group places instances close together for low latency. This increases the chance that one hardware failure affects several instances, which is the opposite of the requirement."
+      },
+      {
+        "id": "d",
+        "text": "Launch the five instances into an Auto Scaling group with a minimum and maximum of five instances in the Availability Zone.",
+        "note": "An Auto Scaling group replaces failed instances, but it does not control where instances are placed on underlying hardware. Several instances could still share a host or rack."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "For a small number of critical instances that must not share hardware, use a spread placement group (up to seven running instances per AZ per group). Partition groups suit large topology-aware clusters, and cluster groups trade fault isolation for latency."
+  },
+  {
+    "id": "performant-3.2-04",
+    "domain": "performant",
+    "services": [
+      "Amazon EC2 Auto Scaling",
+      "Amazon EC2"
+    ],
+    "text": "A company runs a Linux web application on r7i.2xlarge instances (64 GiB of memory) in an Auto Scaling group. When an instance starts, the application builds a 40 GiB in-memory index from a reference dataset, which takes 12 minutes. Traffic spikes are sudden and do not follow a predictable schedule. During spikes, users see slow responses until new instances are ready.\n\nThe company wants new capacity to be in service within a few minutes of a scale-out event.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add a warm pool to the Auto Scaling group that keeps instances in the Stopped state after a lifecycle hook confirms the index is built.",
+        "note": "Stopped instances cost only their EBS volumes and Elastic IP addresses, but stopping an instance discards its memory. When the instance starts, the application must rebuild the 40 GiB index, so the 12-minute delay returns."
+      },
+      {
+        "id": "b",
+        "text": "Raise the minimum capacity of the Auto Scaling group to the number of instances that the application needs at peak load.",
+        "note": "Running peak capacity all the time removes the startup delay, but the company pays for idle running instances between spikes. This is not the most cost-effective option."
+      },
+      {
+        "id": "c",
+        "text": "Configure predictive scaling for the Auto Scaling group so that it launches instances before the forecast demand arrives.",
+        "note": "Predictive scaling forecasts load from recurring daily or weekly patterns. The spikes are unpredictable, so the forecast cannot launch capacity ahead of them."
+      },
+      {
+        "id": "d",
+        "text": "Add a warm pool to the Auto Scaling group that keeps instances in the Hibernated state after a lifecycle hook confirms the index is built.",
+        "note": "Hibernation saves the instance's RAM to its encrypted EBS root volume and restores it on start, so the index is already in memory. Linux instances with less than 150 GiB of RAM can hibernate, and you pay only for EBS storage and Elastic IP addresses while they wait."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Warm pools cut scale-out time for applications with long initialisation. Choose the pool state by what the initialisation produces: Stopped keeps work saved to disk, Hibernated also keeps in-memory state, and Running is rarely worth its cost. Predictive scaling needs a recurring pattern, and over-provisioning works but wastes money."
+  },
+  {
+    "id": "performant-3.2-05",
+    "domain": "performant",
+    "services": [
+      "AWS Lambda",
+      "Amazon API Gateway"
+    ],
+    "text": "A company exposes a pricing API through Amazon API Gateway backed by an AWS Lambda function written in Node.js. The function's initialisation code loads configuration and opens connections, which adds about 3 seconds to cold starts. Traffic is steady at about 200 concurrent requests during business hours. The company's SLA requires consistently low latency for every request during business hours.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure reserved concurrency of 200 for the function so that 200 concurrent executions are always available to it.",
+        "note": "Reserved concurrency guarantees and caps the number of concurrent executions available to a function. It does not pre-initialise execution environments, so requests can still hit cold starts."
+      },
+      {
+        "id": "b",
+        "text": "Increase the function's memory allocation to the maximum of 10,240 MB so that the initialisation code runs on more CPU.",
+        "note": "More memory gives more CPU and can shorten initialisation, but it does not remove cold starts. Requests that land on new execution environments still wait for initialisation."
+      },
+      {
+        "id": "c",
+        "text": "Configure provisioned concurrency of 200 on an alias, and use scheduled scaling to apply it only during business hours.",
+        "note": "Provisioned concurrency keeps the requested number of execution environments initialised and ready, so requests do not incur cold-start latency. Scheduling it to business hours matches the steady daytime load."
+      },
+      {
+        "id": "d",
+        "text": "Move the configuration loading and connection setup from the initialisation code into the function handler.",
+        "note": "Running setup inside the handler repeats the work on every invocation instead of once per execution environment. This increases latency for every request rather than reducing it."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Provisioned concurrency pre-initialises execution environments so that requests avoid cold starts, which suits steady, latency-sensitive traffic. Reserved concurrency only reserves and limits capacity; it does not warm anything. Scheduled scaling of provisioned concurrency limits the extra cost to the hours that need it."
+  },
+  {
+    "id": "performant-3.2-06",
+    "domain": "performant",
+    "services": [
+      "AWS Lambda"
+    ],
+    "text": "An AWS Lambda function resizes and watermarks images uploaded to Amazon S3. The function is configured with 512 MB of memory. Amazon CloudWatch shows that each invocation uses about 300 MB of memory, takes 40 seconds, and is CPU-bound. Cold starts are rare and are not a concern. The company wants to reduce the processing time of each image.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure provisioned concurrency for the function equal to its average concurrency.",
+        "note": "Provisioned concurrency removes cold-start latency. Cold starts are rare here, and provisioned concurrency does not change the CPU power available to each invocation."
+      },
+      {
+        "id": "b",
+        "text": "Increase the memory allocated to the function to 3,008 MB.",
+        "note": "Lambda allocates CPU power in proportion to configured memory. Raising memory gives a CPU-bound function more compute, which shortens each invocation even though the function does not need the extra memory."
+      },
+      {
+        "id": "c",
+        "text": "Increase the function timeout to 15 minutes and configure reserved concurrency for the function.",
+        "note": "A longer timeout only allows the function to run longer, and reserved concurrency only guarantees concurrency. Neither makes an individual invocation faster."
+      },
+      {
+        "id": "d",
+        "text": "Increase the function's ephemeral storage in /tmp to 10,240 MB.",
+        "note": "Ephemeral storage size affects how much data the function can write locally. The function is CPU-bound, so more disk space does not reduce processing time."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "In Lambda, memory is the only compute knob: CPU scales with configured memory (about one full vCPU at 1,769 MB, up to six vCPUs at 10,240 MB). For CPU-bound functions, raising memory often reduces duration enough to offset the higher per-millisecond price. Concurrency settings affect scaling and cold starts, not per-invocation speed."
+  },
+  {
+    "id": "performant-3.2-07",
+    "domain": "performant",
+    "services": [
+      "AWS Lambda"
+    ],
+    "text": "A company runs a Java 21 AWS Lambda function built with the Spring Boot framework. Framework initialisation makes cold starts take up to 8 seconds. Traffic is low and unpredictable, so most invocations arrive on a new execution environment. The company wants to reduce cold-start latency significantly without paying for idle pre-initialised capacity, and without rewriting the application.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure provisioned concurrency of 5 on a published version of the function.",
+        "note": "Provisioned concurrency removes cold starts, but the company pays for the configured environments around the clock even when traffic is idle. This breaks the requirement not to pay for idle capacity."
+      },
+      {
+        "id": "b",
+        "text": "Rewrite the function in Node.js to reduce initialisation time.",
+        "note": "A lighter runtime could start faster, but this requires rewriting the application, which the company wants to avoid."
+      },
+      {
+        "id": "c",
+        "text": "Configure an Amazon EventBridge rule that invokes the function every 5 minutes to keep an execution environment warm.",
+        "note": "Scheduled pings keep at most a few environments warm and do not help when concurrent requests need new environments. This is a workaround that does not reliably reduce cold starts."
+      },
+      {
+        "id": "d",
+        "text": "Enable Lambda SnapStart on published versions of the function, and invoke the function through a version or alias.",
+        "note": "SnapStart takes a snapshot of the initialised execution environment when a version is published and resumes new environments from that snapshot. This greatly reduces Java cold-start latency without code rewrites and without paying for idle environments."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "SnapStart restores new execution environments from a cached snapshot of an already initialised environment, which cuts cold starts for frameworks like Spring Boot. Provisioned concurrency also removes cold starts but charges for environments whether they are used or not. SnapStart works only on published versions, not $LATEST."
+  },
+  {
+    "id": "performant-3.2-08",
+    "domain": "performant",
+    "services": [
+      "Amazon ECS",
+      "AWS Fargate",
+      "Amazon EC2"
+    ],
+    "text": "A company is containerising a video transcoding service that uses NVIDIA GPUs through CUDA. Each container needs one GPU. Demand varies during the day, and the number of containers and the underlying GPU capacity must scale automatically. The operations team is small and does not want to patch, update, or scale the instances that run the containers.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Run the containers on Amazon ECS with an Auto Scaling group of GPU-based EC2 instances as a capacity provider with managed scaling.",
+        "note": "ECS on EC2 supports GPU tasks, and managed scaling grows the instance fleet with the tasks. However, the company still owns the instances: it must choose and update the GPU-optimized AMI, patch the operating system, and maintain the Auto Scaling group."
+      },
+      {
+        "id": "b",
+        "text": "Run the containers on Amazon ECS with AWS Fargate, and specify a GPU resource requirement in the task definition.",
+        "note": "Fargate removes server management, but Fargate tasks cannot use GPUs. This option cannot meet the hardware requirement."
+      },
+      {
+        "id": "c",
+        "text": "Run the containers on Amazon ECS Managed Instances with a capacity provider that selects GPU-based instance types.",
+        "note": "With ECS Managed Instances, AWS provisions, scales, and patches the EC2 instances, and GPU instance types come with NVIDIA drivers and CUDA installed. The team specifies the GPU requirement in the task definition and does not manage the instances."
+      },
+      {
+        "id": "d",
+        "text": "Run the containers on Amazon EKS with a managed node group of GPU-based EC2 instances and the Kubernetes Cluster Autoscaler.",
+        "note": "EKS managed node groups can run GPU pods, but the team must operate the Kubernetes cluster, run the Cluster Autoscaler, and start node group AMI updates. This is more operational work than ECS Managed Instances."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Fargate does not support GPUs. When containers need GPUs and the team does not want to manage instances, use ECS Managed Instances: AWS handles provisioning, scaling, and patching of GPU instances. ECS on a self-managed Auto Scaling group works but leaves AMI and patching work with the company."
+  },
+  {
+    "id": "performant-3.2-09",
+    "domain": "performant",
+    "services": [
+      "AWS Batch",
+      "Amazon EC2"
+    ],
+    "text": "A genomics company processes sequencing runs in a containerised pipeline. Each run produces about 5,000 independent alignment jobs that each take 1–3 hours, followed by a merge job that must start only after every alignment job succeeds. Runs arrive a few times each week. The company wants compute capacity to scale up for each run and back to zero afterwards, and it does not want to build its own job scheduler.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Invoke an AWS Lambda function for each alignment job, and use an Amazon SQS queue to trigger the merge job when all messages are processed.",
+        "note": "Lambda functions time out after 15 minutes, so they cannot run alignment jobs that take 1–3 hours."
+      },
+      {
+        "id": "b",
+        "text": "Run a self-managed Slurm scheduler on Amazon EC2 instances in an Auto Scaling group, and submit the alignment and merge jobs to Slurm.",
+        "note": "Slurm can schedule the jobs and dependencies, but the company must install, operate and scale the scheduler itself, which the company wants to avoid."
+      },
+      {
+        "id": "c",
+        "text": "Submit the alignment jobs to AWS Batch as an array job in a managed compute environment with a minimum of 0 vCPUs, and submit the merge job with a dependency on the array job.",
+        "note": "AWS Batch queues and schedules containerised jobs, scales a managed compute environment from zero to the needed capacity and back, and supports array jobs with job dependencies. This meets every requirement without a self-built scheduler."
+      },
+      {
+        "id": "d",
+        "text": "Create a persistent Amazon EMR cluster, and run the alignment jobs and the merge job as EMR steps.",
+        "note": "EMR is designed for big data frameworks such as Spark and Hadoop. A persistent cluster keeps running between runs, and EMR steps are not a natural fit for thousands of independent containerised jobs."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "AWS Batch is the managed choice for large numbers of containerised batch jobs: it provides queues, array jobs, job dependencies and compute environments that scale to zero. Lambda fails the 15-minute limit, and self-managed schedulers add operational overhead."
+  },
+  {
+    "id": "performant-3.2-10",
+    "domain": "performant",
+    "services": [
+      "Amazon EMR",
+      "Amazon EC2"
+    ],
+    "text": "A company runs a nightly Apache Spark job on an Amazon EMR cluster. The job reads its input from Amazon S3 and writes results back to Amazon S3. The job must finish within a 3-hour window, and it now takes 4 hours as data volume grows. The company wants to add processing capacity at the lowest possible cost. The added capacity must be reliably obtainable every night, and reclaimed capacity must never cause the loss of the cluster or of data stored in HDFS.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Run the primary node and the core nodes on On-Demand Instances.",
+        "note": "The primary node manages the cluster and core nodes store HDFS data. Keeping them On-Demand means a Spot interruption cannot terminate the cluster or lose HDFS blocks."
+      },
+      {
+        "id": "b",
+        "text": "Add a task instance fleet that uses Spot Instances and specifies several instance types across multiple instance families.",
+        "note": "Task nodes run Spark executors but store no HDFS data, so losing them only slows the job. Spot capacity is deeply discounted, and diversifying instance types improves the chance of getting and keeping Spot capacity."
+      },
+      {
+        "id": "c",
+        "text": "Run the core nodes on Spot Instances so that more core nodes can be added for the same budget.",
+        "note": "Core nodes host HDFS. If Spot capacity is reclaimed, HDFS data on those nodes can be lost and the job can fail, which breaks the requirement."
+      },
+      {
+        "id": "d",
+        "text": "Run the primary node on a Spot Instance to reduce the cost of the cluster.",
+        "note": "If the primary node is interrupted, the whole EMR cluster terminates. This risks losing the cluster, which the company wants to avoid."
+      },
+      {
+        "id": "e",
+        "text": "Add a task instance group that uses Spot Instances of a single instance type in a single Availability Zone.",
+        "note": "Task nodes on Spot are the right idea, but depending on a single instance type in one Availability Zone makes it more likely that Spot capacity is unavailable or reclaimed all at once. This breaks the requirement for capacity that is reliably obtainable every night."
+      }
+    ],
+    "correct": [
+      "a",
+      "b"
+    ],
+    "explanation": "Use Spot Instances for EMR task nodes, which hold no HDFS data, and keep the primary and core nodes On-Demand. Instance fleets with several instance types make Spot capacity more available. Spot on the primary node risks the cluster, and Spot on core nodes risks HDFS data."
+  },
+  {
+    "id": "performant-3.2-11",
+    "domain": "performant",
+    "services": [
+      "Amazon EC2",
+      "Elastic Fabric Adapter"
+    ],
+    "text": "A weather forecasting company is moving a Message Passing Interface (MPI) application from an on-premises InfiniBand cluster to Amazon EC2. The application runs on 32 instances and scales well only when inter-node latency is very low and consistent. The company has measured that standard TCP networking between instances limits how far the application scales.\n\nWhich combination of steps should a solutions architect take to provide the HIGHEST inter-node performance? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Launch the instances into a spread placement group so that each instance runs on separate hardware.",
+        "note": "A spread placement group maximises fault isolation and is limited to seven running instances per Availability Zone. It does not reduce latency between nodes."
+      },
+      {
+        "id": "b",
+        "text": "Attach additional elastic network interfaces to each instance, and spread MPI traffic across them.",
+        "note": "Extra network interfaces do not increase an instance's aggregate network bandwidth or remove TCP overhead, so they do not solve the latency problem."
+      },
+      {
+        "id": "c",
+        "text": "Launch the instances into a partition placement group with one partition for each group of eight instances.",
+        "note": "Partition placement groups place partitions on separate racks. This isolates failures for distributed databases but increases latency between nodes in different partitions."
+      },
+      {
+        "id": "d",
+        "text": "Launch the instances into a cluster placement group in a single Availability Zone.",
+        "note": "A cluster placement group places instances close together on the network, giving the lowest latency and highest throughput between them. This is the recommended placement for tightly coupled HPC."
+      },
+      {
+        "id": "e",
+        "text": "Use an instance type that supports Elastic Fabric Adapter (EFA), attach an EFA to each instance, and use an MPI library that supports EFA.",
+        "note": "EFA provides OS-bypass networking that lets MPI communicate directly with the network interface, giving lower and more consistent latency than TCP. This is the AWS equivalent of the InfiniBand-style interconnect the application relies on."
+      }
+    ],
+    "correct": [
+      "d",
+      "e"
+    ],
+    "explanation": "Tightly coupled MPI workloads on AWS use EFA for OS-bypass networking and a cluster placement group for physical proximity. ENA-based enhanced networking improves TCP throughput, but only EFA removes the kernel network stack from the MPI path."
+  },
+  {
+    "id": "performant-3.2-12",
+    "domain": "performant",
+    "services": [
+      "Amazon EC2",
+      "AWS Graviton"
+    ],
+    "text": "A company runs a stateless Java web application on m5 instances in an Auto Scaling group behind an Application Load Balancer. The application and all its libraries run on the JVM, and the company has confirmed that its build pipeline can produce arm64 artifacts. Load testing shows the application is CPU-bound and needs 4 GiB of memory for each vCPU. The company wants to increase the throughput it gets for each dollar of compute spend.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Change the launch template to a larger x86-based instance size in the same m5 family.",
+        "note": "A larger m5 size adds vCPUs at a proportionally higher price, so throughput for each dollar stays about the same."
+      },
+      {
+        "id": "b",
+        "text": "Change the launch template to an equivalent AWS Graviton-based general purpose instance type, such as m7g, and deploy arm64 artifacts.",
+        "note": "Graviton-based general purpose instances keep the 4 GiB per vCPU ratio and deliver better price performance than comparable x86 instances for many workloads. A JVM application with arm64-ready dependencies can move with little or no code change."
+      },
+      {
+        "id": "c",
+        "text": "Change the launch template to burstable t3 instances with unlimited mode enabled.",
+        "note": "Burstable instances suit workloads with low baseline CPU and occasional bursts. A CPU-bound application runs above baseline constantly, and unlimited mode charges for the extra CPU credits."
+      },
+      {
+        "id": "d",
+        "text": "Change the launch template to a compute optimized x86-based instance type, such as c6i, with the same number of vCPUs.",
+        "note": "Compute optimized instances are cheaper per vCPU, but they provide only 2 GiB of memory for each vCPU. This breaks the requirement for 4 GiB of memory per vCPU."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "AWS Graviton (arm64) instances offer the best price performance in EC2 for many workloads, and interpreted or JVM-based applications usually move easily. Remember that Graviton is both a performance and a cost lever, available for EC2, Lambda, Fargate and managed databases."
+  },
+  {
+    "id": "performant-3.2-13",
+    "domain": "performant",
+    "services": [
+      "Amazon EC2",
+      "Amazon CloudWatch"
+    ],
+    "text": "A company runs an in-memory analytics engine on a single c6i.4xlarge instance (16 vCPUs, 32 GiB memory). The engine cannot be distributed across multiple nodes. Metrics from the Amazon CloudWatch agent show memory utilisation above 95% with heavy swapping, while CPU utilisation stays below 25%. Query response times have become unacceptable.\n\nWhich solution will improve performance MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Change the instance type to c6i.8xlarge (32 vCPUs, 64 GiB memory).",
+        "note": "This doubles memory, but it also doubles vCPUs that the workload does not use, so the company pays for idle compute. A memory optimized type gives more memory for the money."
+      },
+      {
+        "id": "b",
+        "text": "Place the instance in an Auto Scaling group and add a second instance when memory utilisation exceeds 80%.",
+        "note": "The engine cannot be distributed across nodes, so a second instance cannot share the working set. Horizontal scaling does not fix the memory shortage."
+      },
+      {
+        "id": "c",
+        "text": "Change the instance type to a burstable t3.2xlarge instance with unlimited mode enabled.",
+        "note": "A t3.2xlarge instance has 32 GiB memory, so the memory shortage remains. Burstable instances address CPU bursts, which is not the bottleneck."
+      },
+      {
+        "id": "d",
+        "text": "Change the instance type to r6i.4xlarge (16 vCPUs, 128 GiB memory).",
+        "note": "Memory optimized R instances offer far more memory per vCPU. The workload is memory-bound with idle CPU, so keeping the vCPU count and quadrupling memory removes the swapping at the lowest cost."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Match the instance family to the bottleneck: compute optimized C for CPU-bound work, memory optimized R or X for large in-memory working sets, storage optimized I or D for local disk I/O. Here memory is the constraint and CPU is idle, so an R instance with the same vCPU count is the cost-effective fix."
+  },
+  {
+    "id": "performant-3.2-14",
+    "domain": "performant",
+    "services": [
+      "Amazon EC2"
+    ],
+    "text": "An engineering firm runs a tightly coupled simulation every Monday on 48 c6in.32xlarge instances in a cluster placement group. Engineers launch the instances in batches of 8 as input data becomes ready, and recent runs failed because later batches returned insufficient capacity errors. The simulation must start on time every week, so the firm must be certain that all 48 instances can launch in the placement group.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Purchase zonal Reserved Instances for 48 c6in.32xlarge instances in the Availability Zone that contains the placement group.",
+        "note": "Zonal Reserved Instances reserve capacity in an Availability Zone, but they cannot reserve capacity in a placement group. Launches into the cluster placement group can still fail for lack of capacity."
+      },
+      {
+        "id": "b",
+        "text": "Create an On-Demand Capacity Reservation for 48 c6in.32xlarge instances in the cluster placement group, and launch into it.",
+        "note": "A Capacity Reservation created in a cluster placement group holds that capacity for the firm for as long as the reservation is active. Instances that match the reservation launch into the placement group without capacity errors."
+      },
+      {
+        "id": "c",
+        "text": "Launch all 48 instances in a single launch request of one instance type, and retry in another Availability Zone if the request fails.",
+        "note": "A single launch request of one instance type is the recommended way to improve the chance of getting capacity in a cluster placement group, but it does not guarantee capacity. Moving to another Availability Zone also delays the run."
+      },
+      {
+        "id": "d",
+        "text": "Replace the cluster placement group with a partition placement group that has seven partitions, so that EC2 can use more racks.",
+        "note": "Spreading instances across partitions draws on more racks, but it gives up the low-latency placement the simulation needs. Partition placement groups also do not support Capacity Reservations, so capacity is still not guaranteed."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "To guarantee capacity in a cluster placement group, create an On-Demand Capacity Reservation in the placement group. Zonal Reserved Instances and Capacity Blocks cannot reserve capacity in a placement group, and launching all instances in one request only improves the odds. Remember: placement groups decide where instances go; Capacity Reservations decide whether capacity is there."
+  },
+  {
+    "id": "performant-3.2-15",
+    "domain": "performant",
+    "services": [
+      "Amazon ECS",
+      "AWS Fargate",
+      "Amazon EventBridge",
+      "Amazon S3"
+    ],
+    "text": "A company receives large data files in an Amazon S3 bucket at irregular times, a few dozen times each day. Each file must be processed by a containerised application that needs 4 vCPUs and 16 GB of memory and runs for 30–50 minutes. Processing must start within a few minutes of each upload. The company does not want to manage servers or pay for idle compute between files.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure an S3 event notification that invokes an AWS Lambda function packaged from the container image, with the maximum memory setting of 10,240 MB.",
+        "note": "Lambda can run container images, but its maximum memory is 10,240 MB and its maximum timeout is 15 minutes. The job needs 16 GB of memory and 30–50 minutes, so it cannot run on Lambda."
+      },
+      {
+        "id": "b",
+        "text": "Enable Amazon EventBridge notifications on the bucket, and create an EventBridge rule that runs an Amazon ECS task on AWS Fargate for each new object.",
+        "note": "EventBridge can start an ECS task directly for each S3 upload. Fargate runs the container without servers, bills only while the task runs, and has no 15-minute limit."
+      },
+      {
+        "id": "c",
+        "text": "Run an Amazon ECS service on an Auto Scaling group of EC2 instances, and have the containers poll the bucket for new files every minute.",
+        "note": "This processes the files, but the company must manage the EC2 instances, and the service runs and costs money even when no files arrive."
+      },
+      {
+        "id": "d",
+        "text": "Launch a single Amazon EC2 instance with a cron job that checks the bucket every 5 minutes and starts the container for each new file.",
+        "note": "A cron-based instance runs continuously, needs patching and management, and is a single point of failure. It breaks both the no-servers and no-idle-cost requirements."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "For event-driven container work that exceeds Lambda's 15-minute limit, start ECS tasks on Fargate from EventBridge. Fargate removes server management and charges only while tasks run. Lambda remains the choice when the work fits within 15 minutes."
+  },
+  {
+    "id": "performant-3.2-16",
+    "domain": "performant",
+    "services": [
+      "Amazon EC2 Auto Scaling",
+      "Elastic Load Balancing",
+      "Amazon CloudWatch"
+    ],
+    "text": "A company runs an API on Amazon EC2 instances in an Auto Scaling group behind an Application Load Balancer. Each request mostly waits on calls to downstream services, so CPU utilisation stays below 30% even when the instances are saturated. The group uses a target tracking policy on average CPU utilisation of 60%, and it does not scale out during traffic surges. Load tests show that each instance handles about 500 requests per minute before latency rises.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Keep the CPU utilisation target tracking policy, and lower its target value to 20% so that the group scales out earlier.",
+        "note": "CPU utilisation does not track load reliably for this I/O-bound application. A lower CPU target would cause scaling at the wrong times and could keep the group over-provisioned."
+      },
+      {
+        "id": "b",
+        "text": "Replace the policy with a step scaling policy based on the NetworkIn metric of the instances.",
+        "note": "NetworkIn depends on request and payload size, not on the number of concurrent requests an instance can serve, so it is an indirect signal that needs manual tuning of steps."
+      },
+      {
+        "id": "c",
+        "text": "Add scheduled scaling actions that raise the minimum capacity during the hours when surges have usually occurred.",
+        "note": "The problem is that the scaling metric does not reflect load. Scheduled actions cannot react to surges that happen outside the scheduled hours."
+      },
+      {
+        "id": "d",
+        "text": "Replace the policy with a target tracking policy on the ALBRequestCountPerTarget metric with a target value of 400.",
+        "note": "Request count per target directly measures load on each instance for a request-bound application. Target tracking adds and removes instances to hold the value below the measured capacity of 500 requests per minute."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Choose a scaling metric that tracks the real bottleneck. For I/O-bound web tiers behind an ALB, ALBRequestCountPerTarget is the predefined target tracking metric that scales with load when CPU does not."
+  },
+  {
+    "id": "performant-3.2-17",
+    "domain": "performant",
+    "services": [
+      "Amazon EMR",
+      "Amazon S3"
+    ],
+    "text": "A company runs an on-premises Hadoop cluster with Apache Spark, Apache Hive and Apache HBase workloads on 200 TB of data in HDFS. The cluster is sized for peak load and sits mostly idle. The company wants to migrate to AWS with minimal changes to its existing jobs, and wants to scale compute independently of storage so that it can shut compute down when it is not needed.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Move the data to Amazon S3, and run the jobs on Amazon EMR clusters that use EMRFS, with HBase storing its data in Amazon S3.",
+        "note": "Amazon EMR runs Spark, Hive and HBase with minimal job changes. Storing data in S3 through EMRFS (including HBase on S3) separates storage from compute, so clusters can be resized or terminated without losing data."
+      },
+      {
+        "id": "b",
+        "text": "Move the data to Amazon S3, and rewrite the workloads as AWS Glue ETL jobs that use the AWS Glue Data Catalog.",
+        "note": "AWS Glue runs serverless Spark ETL jobs, but it does not run HBase or Hive workloads as-is. Rewriting the jobs breaks the minimal-change requirement."
+      },
+      {
+        "id": "c",
+        "text": "Copy the HDFS data to Amazon EBS volumes on a long-running Amazon EMR cluster, and keep HDFS as the storage layer for all jobs.",
+        "note": "HDFS on EBS ties storage to the cluster. The cluster must keep running to keep the data, so compute cannot be shut down independently."
+      },
+      {
+        "id": "d",
+        "text": "Load the data into Amazon Redshift, and convert the Spark, Hive, and HBase jobs to SQL queries that run on the cluster.",
+        "note": "Amazon Redshift is a data warehouse for SQL analytics. Converting Spark and HBase workloads to SQL is a major rewrite, and HBase key-value access patterns do not map to Redshift."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Amazon EMR is the managed home for existing Hadoop-ecosystem jobs. Using Amazon S3 as the storage layer (EMRFS, HBase on S3) decouples storage from compute, so transient or resized clusters do not risk data. Glue is the serverless Spark option when rewriting ETL jobs is acceptable."
+  }
+]

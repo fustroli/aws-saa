@@ -1,0 +1,1672 @@
+[
+  {
+    "id": "resilient-2.1-01",
+    "domain": "resilient",
+    "services": [
+      "Amazon SQS",
+      "Amazon EC2 Auto Scaling"
+    ],
+    "text": "A company runs an order-processing application on Amazon EC2 instances in an Auto Scaling group. The instances poll an Amazon SQS standard queue that uses the default queue settings. Each order takes about 3 minutes to process, and the worker deletes the message only after processing completes.\n\nThe operations team notices that many orders are processed two or more times by different instances. The company wants to stop the repeated processing with the fewest changes to the application.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Replace the standard queue with an SQS FIFO queue. Enable content-based deduplication on the FIFO queue.",
+        "note": "FIFO deduplication removes duplicate sends within a 5-minute window. It does not stop a received message from becoming visible again when processing outlasts the visibility timeout, and moving to FIFO requires a new queue and producer changes."
+      },
+      {
+        "id": "b",
+        "text": "Enable long polling on the queue by setting the receive message wait time to 20 seconds.",
+        "note": "Long polling reduces empty ReceiveMessage responses. It does not change how long a received message stays hidden from other consumers, so the repeated processing continues."
+      },
+      {
+        "id": "c",
+        "text": "Increase the visibility timeout of the queue to a value longer than the maximum order processing time.",
+        "note": "The default visibility timeout is 30 seconds, so each message becomes visible again while the first worker is still processing it. A visibility timeout longer than the processing time keeps the message hidden until the worker deletes it, with a single configuration change."
+      },
+      {
+        "id": "d",
+        "text": "Configure the queue as a delay queue by setting the delivery delay to 3 minutes.",
+        "note": "A delivery delay hides new messages before their first receive. After a worker receives the message, the 30-second visibility timeout still applies, so other workers receive it again."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "When processing takes longer than the visibility timeout, SQS makes the message visible again and another consumer receives it. Set the visibility timeout above the maximum processing time. Remember: delivery delay controls when a message is first visible; visibility timeout controls how long it stays hidden after a receive."
+  },
+  {
+    "id": "resilient-2.1-02",
+    "domain": "resilient",
+    "services": [
+      "Amazon SQS",
+      "Amazon EC2"
+    ],
+    "text": "A company has a fleet of Amazon EC2 instances that consume messages from several Amazon SQS queues. Messages arrive sporadically, and some queues receive no messages for hours. Amazon CloudWatch shows a very high NumberOfEmptyReceives metric, and SQS request charges are higher than expected.\n\nThe company wants to reduce SQS costs without adding noticeable delay to message processing and without changing the overall architecture.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Set the receive message wait time on each queue to 20 seconds so that consumers use long polling.",
+        "note": "Long polling holds a ReceiveMessage request open for up to 20 seconds and returns as soon as a message arrives. This cuts empty receives and request charges without adding processing delay."
+      },
+      {
+        "id": "b",
+        "text": "Change the consumers to sleep for 5 minutes after each ReceiveMessage call that returns no messages.",
+        "note": "Sleeping between polls reduces requests, but a message that arrives during the sleep waits up to 5 minutes. This adds noticeable processing delay."
+      },
+      {
+        "id": "c",
+        "text": "Replace the SQS queues with Amazon SNS topics that push messages to HTTP endpoints on the EC2 instances.",
+        "note": "SNS push delivery removes polling but changes the architecture and removes the durable buffer that the queues provide between producers and consumers."
+      },
+      {
+        "id": "d",
+        "text": "Keep short polling and set the maximum number of messages per ReceiveMessage call to 10.",
+        "note": "Batching up to 10 messages helps when queues are busy. When queues are empty, short polling still returns immediately with no messages, so empty receives remain high."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Long polling (wait time up to 20 seconds) is the standard way to cut empty receives and SQS request costs on quiet queues. It returns immediately when a message arrives, so latency does not increase. Remember: short polling returns immediately even when empty; long polling waits for messages."
+  },
+  {
+    "id": "resilient-2.1-03",
+    "domain": "resilient",
+    "services": [
+      "Amazon SQS",
+      "AWS Lambda"
+    ],
+    "text": "A company uses an AWS Lambda function with an Amazon SQS standard queue as its event source to generate invoices. Occasionally a malformed message causes the function to fail. The message returns to the queue and is retried repeatedly until it expires, which wastes Lambda concurrency.\n\nThe company wants to set aside messages that fail several times so that developers can analyze them later. The messages must not be lost, and the company wants to avoid writing custom code.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure an on-failure destination for the Lambda function that sends failed invocation records to a second SQS queue.",
+        "note": "Lambda destinations apply to asynchronous invocations. An SQS event source mapping invokes the function synchronously, so the on-failure destination is not used for these messages."
+      },
+      {
+        "id": "b",
+        "text": "Reduce the message retention period of the queue to 5 minutes so that malformed messages expire quickly.",
+        "note": "A short retention period stops the retries by deleting the messages. The messages are lost, which breaks the requirement to keep them for analysis."
+      },
+      {
+        "id": "c",
+        "text": "Increase the visibility timeout of the queue to 12 hours so that failed messages are retried less often.",
+        "note": "A longer visibility timeout slows the retries but does not separate the failing messages from valid ones. They are still retried until the retention period ends."
+      },
+      {
+        "id": "d",
+        "text": "Create a dead-letter queue. Configure a redrive policy on the source queue with a maximum receive count of 5.",
+        "note": "After a message is received 5 times without being deleted, SQS moves it to the dead-letter queue. The message is kept for analysis and stops consuming Lambda concurrency, with no custom code."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "A redrive policy with maxReceiveCount moves poison messages to a dead-letter queue after a set number of failed receives. For SQS event sources, configure the DLQ on the source queue, not as a Lambda destination. Remember: Lambda on-failure destinations cover asynchronous invocations and Kinesis, DynamoDB Streams, and Kafka event source mappings, but not SQS event source mappings."
+  },
+  {
+    "id": "resilient-2.1-04",
+    "domain": "resilient",
+    "services": [
+      "Amazon SQS",
+      "Amazon ECS"
+    ],
+    "text": "A financial services company processes account transactions from an Amazon SQS FIFO queue. Transactions for the same account must be applied in the order they were sent. Transactions for different accounts are independent. Producers send every message with the same message group ID.\n\nTransaction volume has grown, and the consumers that run on Amazon ECS cannot keep up. Adding more consumer tasks has not increased throughput. The company must increase processing parallelism while preserving per-account ordering.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Replace the FIFO queue with an SQS standard queue. Add more consumer tasks to process messages in parallel.",
+        "note": "A standard queue increases parallelism but offers only best-effort ordering, so transactions for the same account could be applied out of order."
+      },
+      {
+        "id": "b",
+        "text": "Change the producers to use the account ID as the message group ID. Keep the FIFO queue and scale out the consumer tasks.",
+        "note": "FIFO ordering is enforced per message group. With one group per account, messages for different accounts can be processed by different consumers at the same time while each account stays in order."
+      },
+      {
+        "id": "c",
+        "text": "Enable high throughput mode on the FIFO queue. Keep the single message group ID and scale out the consumer tasks.",
+        "note": "High throughput mode raises the API request limits. With a single message group, SQS still delivers the group's messages to only one consumer at a time to preserve order, so more consumers do not help."
+      },
+      {
+        "id": "d",
+        "text": "Create one FIFO queue for each consumer task. Change the producers to distribute transactions across the queues in round-robin order.",
+        "note": "Round-robin distribution sends transactions for the same account to different queues and consumers. Per-account ordering is lost."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "In a FIFO queue, the message group ID is the unit of ordering and of parallelism. Using a fine-grained key such as the account ID lets many consumers work in parallel while each group stays strictly ordered. Remember: one message group means one consumer at a time, regardless of throughput mode."
+  },
+  {
+    "id": "resilient-2.1-05",
+    "domain": "resilient",
+    "services": [
+      "Amazon SNS",
+      "Amazon SQS"
+    ],
+    "text": "An ecommerce company has an order service that sends an event to an Amazon SQS queue for each new order. The fulfillment system consumes the queue. The company now needs an analytics system and an email system to also receive every order event. Each system processes events at its own pace and must not lose events if it is unavailable for several hours.\n\nThe company plans to add more consuming systems in the future and does not want to change the order service each time.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure the analytics system and the email system to poll the existing SQS queue alongside the fulfillment system.",
+        "note": "Consumers of one SQS queue compete for messages. Each event is processed by only one system, so the other systems miss it."
+      },
+      {
+        "id": "b",
+        "text": "Publish order events to an Amazon SNS topic. Subscribe an HTTPS endpoint for each system to the topic.",
+        "note": "SNS delivers every event to each subscriber, but HTTPS delivery retries stop after at most 3,600 seconds. Without a durable buffer, a system that is unavailable for several hours loses events."
+      },
+      {
+        "id": "c",
+        "text": "Publish order events to an Amazon SNS topic. Subscribe a separate SQS queue for each system to the topic.",
+        "note": "SNS fan-out copies every event to each subscribed queue. Each queue buffers events durably for its system, and new systems are added by subscribing a new queue without changing the order service."
+      },
+      {
+        "id": "d",
+        "text": "Create an SQS queue for each system. Change the order service to send each event to every queue.",
+        "note": "Each system gets its own durable copy, but the order service must be changed every time a new consumer is added, which breaks a stated requirement."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "SNS-to-SQS fan-out delivers every message to every subscriber and lets each consumer read from its own durable queue at its own pace. Producers publish once and never need to know about consumers. Remember: SQS distributes work between consumers; SNS copies messages to all subscribers."
+  },
+  {
+    "id": "resilient-2.1-06",
+    "domain": "resilient",
+    "services": [
+      "Amazon SNS",
+      "Amazon SQS"
+    ],
+    "text": "An insurance company publishes claim events as JSON messages to an Amazon SNS topic. Three Amazon SQS queues are subscribed to the topic. The fraud-review application that reads one of the queues needs only claims where the claimAmount field in the message body is greater than 10,000. Today it receives every claim and discards about 90% of them.\n\nThe team that owns the publishing application cannot change its code in the next year. The company wants to stop delivering irrelevant claims to the fraud-review queue with the LEAST development effort.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a second SNS topic for high-value claims. Subscribe the fraud-review queue to the new topic.",
+        "note": "A separate topic works only if the publisher decides which topic to use for each claim. The publishing code cannot change, so nothing would be published to the new topic."
+      },
+      {
+        "id": "b",
+        "text": "Subscribe an AWS Lambda function to the topic. Have the function inspect each claim and forward high-value claims to the fraud-review queue.",
+        "note": "A routing function works but adds code to write, deploy, and maintain. Native SNS filtering achieves the same result with configuration only."
+      },
+      {
+        "id": "c",
+        "text": "Change the fraud-review application to delete low-value claims from its queue immediately after it receives them.",
+        "note": "The queue still receives every claim, and the application still pays to receive and discard most messages. This does not stop the irrelevant deliveries."
+      },
+      {
+        "id": "d",
+        "text": "Apply a subscription filter policy to the fraud-review queue subscription with a message body scope and a numeric condition on claimAmount.",
+        "note": "SNS filter policies can match on fields in the message body. Only claims with claimAmount greater than 10,000 are delivered to the queue, with no code changes."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "SNS subscription filter policies route a subset of messages to each subscriber, and payload-based filtering can match on fields in the JSON body. This avoids publisher changes and routing code. Remember: filter at the subscription, not in the consumer."
+  },
+  {
+    "id": "resilient-2.1-07",
+    "domain": "resilient",
+    "services": [
+      "Amazon EventBridge",
+      "AWS Lambda",
+      "AWS Organizations"
+    ],
+    "text": "A company has 30 AWS accounts in an organization in AWS Organizations. The operations team wants every Amazon EC2 instance state change in every account to be recorded by a single AWS Lambda function in a central operations account. The changes must be recorded within seconds of occurring.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "In each member account, add an EventBridge rule that sends EC2 state-change events to the central account's event bus, where a rule invokes the function.",
+        "note": "EC2 emits state-change events to EventBridge automatically. Member-account rules forward them within seconds to the central bus, whose resource policy allows the organization, and one central rule invokes the function. No polling code is needed."
+      },
+      {
+        "id": "b",
+        "text": "Deploy a Lambda function in each member account that calls the DescribeInstances API every minute and sends any changes to the central Lambda function.",
+        "note": "Polling every minute adds delay, misses short-lived changes between polls, and requires 30 functions to maintain."
+      },
+      {
+        "id": "c",
+        "text": "Create an organization trail in AWS CloudTrail that delivers logs to an Amazon S3 bucket. Configure an S3 event notification that invokes the Lambda function to parse new log files.",
+        "note": "CloudTrail delivers log files to S3 several minutes after the API calls, so changes are not recorded within seconds. Parsing log files also adds custom code."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon SNS topic in the central account. Configure EC2 in each member account to publish instance state changes to the topic, and subscribe the Lambda function.",
+        "note": "EC2 does not publish instance state changes directly to SNS. State-change events are delivered through EventBridge, so a rule would still be needed in each account."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "AWS services emit events to the default EventBridge bus, and EventBridge rules can route them to an event bus in another account for central processing. This gives near-real-time, cross-account event routing with configuration only. Remember: EventBridge is the native path for AWS service events; SNS needs a publisher."
+  },
+  {
+    "id": "resilient-2.1-08",
+    "domain": "resilient",
+    "services": [
+      "Amazon EventBridge Scheduler",
+      "AWS Lambda"
+    ],
+    "text": "A company runs nightly report jobs from cron on a single Amazon EC2 instance. Each job must start at 02:00 local time for one of 12 regional offices in different time zones, and several of those time zones observe daylight saving time. Each job runs for less than 5 minutes and has been rewritten as an AWS Lambda function.\n\nThe company wants to remove the single point of failure and avoid managing servers. The jobs must keep starting at 02:00 local time throughout the year without manual changes.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Amazon EventBridge rule with a cron expression for each office that invokes the corresponding Lambda function.",
+        "note": "EventBridge scheduled rules evaluate cron expressions in UTC only. The expressions would need manual changes at each daylight saving transition."
+      },
+      {
+        "id": "b",
+        "text": "Create an Amazon EventBridge Scheduler schedule with a cron expression and the office's time zone for each office. Set the Lambda function as the target.",
+        "note": "EventBridge Scheduler is serverless and lets each schedule specify a time zone. It adjusts for daylight saving time automatically, so each job keeps starting at 02:00 local time."
+      },
+      {
+        "id": "c",
+        "text": "Create an AWS Step Functions Standard workflow for each office that uses a Wait state to pause until 02:00 local time and then invokes the Lambda function in a loop.",
+        "note": "A looping workflow that waits for the next run is a custom scheduler that must compute local times and DST offsets in code. It adds complexity compared with a native scheduler."
+      },
+      {
+        "id": "d",
+        "text": "Move the cron jobs to an Auto Scaling group with a minimum of two EC2 instances in different Availability Zones.",
+        "note": "Two instances remove the single point of failure, but the company still manages servers and must prevent both instances from running the same job."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "EventBridge Scheduler supports time zones and daylight saving time for cron schedules and invokes targets such as Lambda without servers. EventBridge scheduled rules run in UTC only. Remember: for time-zone-aware schedules, use EventBridge Scheduler."
+  },
+  {
+    "id": "resilient-2.1-09",
+    "domain": "resilient",
+    "services": [
+      "Amazon EventBridge",
+      "AWS Lambda"
+    ],
+    "text": "A company's microservices communicate through a custom Amazon EventBridge event bus. Last month, a bug in the billing service caused it to process events incorrectly for 6 hours. The events were delivered successfully, so they could not be recovered.\n\nThe company wants to be able to reprocess the billing events from a specific past time window after any future incident. The solution must require the LEAST operational overhead.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure an Amazon SQS dead-letter queue on the billing rule target. Redrive the messages after the bug is fixed.",
+        "note": "A target dead-letter queue captures only events that EventBridge fails to deliver. Events that are delivered but processed incorrectly never reach the dead-letter queue."
+      },
+      {
+        "id": "b",
+        "text": "Add an AWS Lambda function as a second target that writes every event to an Amazon DynamoDB table. Build a tool that reads a time range from the table and republishes the events.",
+        "note": "This stores and replays events, but the company must build and maintain the storage and replay code."
+      },
+      {
+        "id": "c",
+        "text": "Create an archive on the custom event bus with an event pattern for billing events. Start a replay for the affected time window when needed.",
+        "note": "EventBridge archives keep matching events, and a replay sends events from a chosen time window back to the bus and its rules. This is a native feature that needs no custom code."
+      },
+      {
+        "id": "d",
+        "text": "Increase the maximum event age and the retry attempts in the retry policy of the billing rule target to the maximum values.",
+        "note": "The retry policy applies only when delivery fails. Events that the billing service accepted are not retried."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "EventBridge archive and replay stores events that match a pattern and can resend those from a chosen time range to the bus. It recovers from consumer bugs without custom storage. Remember: DLQs and retry policies cover delivery failures, not events that were delivered and mishandled."
+  },
+  {
+    "id": "resilient-2.1-10",
+    "domain": "resilient",
+    "services": [
+      "AWS Step Functions",
+      "AWS Lambda"
+    ],
+    "text": "A travel company is building a booking service. Each booking reserves a flight, then a hotel, then a rental car by calling three separate AWS Lambda functions. If any reservation fails after retries, the reservations that already succeeded must be canceled by calling compensating Lambda functions. Support staff must be able to see the state and history of each booking.\n\nWhich solution will meet these requirements with the LEAST custom code?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Have each reservation function invoke the next function asynchronously. Configure an on-failure destination on each function that invokes a cancellation function.",
+        "note": "Destinations can route failures, but each cancellation function must work out which earlier steps succeeded. Booking state and history are spread across logs, which requires custom tracking."
+      },
+      {
+        "id": "b",
+        "text": "Place an Amazon SQS queue between each pair of reservation functions. Write the booking state to an Amazon DynamoDB table after each step.",
+        "note": "Queues decouple the steps, but the company must write the code that tracks state, decides when to compensate, and runs the cancellations."
+      },
+      {
+        "id": "c",
+        "text": "Publish each booking request to an Amazon SNS topic. Subscribe all three reservation functions to the topic.",
+        "note": "SNS invokes all three functions in parallel. There is no sequencing, no central state, and no built-in way to cancel completed reservations when one fails."
+      },
+      {
+        "id": "d",
+        "text": "Create an AWS Step Functions Standard workflow with a Task state per reservation, Retry fields, and Catch fields that run compensating tasks.",
+        "note": "Step Functions orchestrates the sequence, retries, and error handling declaratively. Standard workflows keep the execution history for each booking and show it in the console."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Step Functions Standard workflows implement orchestration and the saga pattern with built-in Retry and Catch, and they record each execution's state and history. Choreography with queues, topics, or destinations needs custom code to coordinate compensation. Remember: orchestration with state and compensation points to Step Functions."
+  },
+  {
+    "id": "resilient-2.1-11",
+    "domain": "resilient",
+    "services": [
+      "AWS Step Functions",
+      "AWS Lambda"
+    ],
+    "text": "A company ingests about 2,000 telemetry events each second from industrial sensors. Each event passes through three AWS Lambda functions in sequence that validate, enrich, and store it. The full sequence completes in less than 10 seconds. The processing is idempotent, so at-least-once execution is acceptable.\n\nThe company wants to define the sequence and its error handling in AWS Step Functions.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a Step Functions Express workflow that invokes the three functions. Start an asynchronous execution for each event.",
+        "note": "Express workflows are built for high-volume, short-duration processing of up to 5 minutes. They are billed by execution count and duration and offer at-least-once execution, which the idempotent processing allows."
+      },
+      {
+        "id": "b",
+        "text": "Create a Step Functions Standard workflow that invokes the three functions. Start an execution for each event.",
+        "note": "Standard workflows provide exactly-once execution and long-running history, and they are billed per state transition. At 2,000 events each second this costs far more than Express workflows, and the exactly-once guarantee is not needed."
+      },
+      {
+        "id": "c",
+        "text": "Create a fourth Lambda function that invokes the three functions synchronously in sequence and handles errors in code.",
+        "note": "An orchestrator function pays for idle time while it waits for each call, and it moves the sequence and error handling into custom code instead of Step Functions."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon Managed Workflows for Apache Airflow (Amazon MWAA) environment with a DAG that runs the three functions for each event.",
+        "note": "Apache Airflow is designed for scheduled batch pipelines. It is not suited to starting a workflow for each of 2,000 events each second, and it does not use Step Functions."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Choose Express workflows for high-rate, short (under 5 minutes), idempotent processing, and Standard workflows for long-running processes that need exactly-once execution and full history. Standard is charged per state transition, which is expensive at very high event rates."
+  },
+  {
+    "id": "resilient-2.1-12",
+    "domain": "resilient",
+    "services": [
+      "AWS Step Functions",
+      "AWS Lambda",
+      "Amazon S3"
+    ],
+    "text": "A media company stores 5 million existing images in an Amazon S3 bucket. The company has written an AWS Lambda function that generates a thumbnail for one image. The company must run the function once for every existing image, with thousands of images processed in parallel. The company must be able to see which images failed and must stop the job if more than 5% of images fail.\n\nWhich solution will meet these requirements with the LEAST custom code?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Write a Lambda function that lists the objects in the bucket and asynchronously invokes the thumbnail function for each object.",
+        "note": "Listing 5 million objects and tracking results may exceed the 15-minute Lambda timeout, and the failure tracking and 5% stop condition must be written by hand."
+      },
+      {
+        "id": "b",
+        "text": "Create an AWS Step Functions workflow with a Distributed Map state that reads the objects from the S3 bucket, invokes the thumbnail function for each object, and sets a tolerated failure percentage of 5%.",
+        "note": "Distributed Map runs up to thousands of parallel child executions over an S3 dataset. It records failed items and stops the run when the tolerated failure percentage is exceeded, with no custom orchestration code."
+      },
+      {
+        "id": "c",
+        "text": "Create an AWS Step Functions workflow with an inline Map state that receives the list of object keys as input and invokes the thumbnail function for each key.",
+        "note": "An inline Map state runs at most 40 iterations concurrently and is bound by the execution input size and history limits. It cannot process a list of 5 million keys at the required parallelism."
+      },
+      {
+        "id": "d",
+        "text": "Configure an S3 event notification for object creation on the bucket that invokes the thumbnail function.",
+        "note": "Event notifications fire only for new objects. The 5 million existing images would not be processed."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Step Functions Distributed Map is designed for large-scale parallel processing of S3 datasets, with built-in failure thresholds and result reporting. Inline Map is limited to 40 concurrent iterations within one execution. Remember: S3 event notifications only cover new objects, not a backfill."
+  },
+  {
+    "id": "resilient-2.1-13",
+    "domain": "resilient",
+    "services": [
+      "Amazon API Gateway"
+    ],
+    "text": "A software company exposes a REST API through Amazon API Gateway to its customers. Free-tier customers must be limited to 10 requests each second and 10,000 requests each month. Premium customers must be limited to 100 requests each second with no monthly limit. API Gateway must identify which customer sends each request and enforce the limits without changes to the backend code.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a usage plan for each tier with the required throttling rate and monthly quota. Associate the usage plans with the API stage.",
+        "note": "Usage plans define throttling and quota limits that API Gateway applies, on a best-effort basis, to each API key associated with the plan."
+      },
+      {
+        "id": "b",
+        "text": "Create an API key for each customer, require an API key on the API methods, and associate each key with the usage plan for its tier.",
+        "note": "API keys let API Gateway identify the calling customer and apply that customer's usage plan limits to the request."
+      },
+      {
+        "id": "c",
+        "text": "Set the default stage-level throttling for the API to 10 requests each second.",
+        "note": "Stage-level throttling applies to all callers together. It cannot give premium customers a higher limit or track a monthly quota for each customer."
+      },
+      {
+        "id": "d",
+        "text": "Attach an AWS WAF web ACL to the API stage with a rate-based rule that limits requests from each IP address.",
+        "note": "Rate-based rules count requests from each IP address over a time window. They cannot identify customers, apply different tiers, or enforce monthly quotas."
+      },
+      {
+        "id": "e",
+        "text": "Set reserved concurrency on the backend AWS Lambda function to limit the requests that free-tier customers can make.",
+        "note": "Reserved concurrency limits the function as a whole. It cannot tell free-tier customers from premium customers."
+      }
+    ],
+    "correct": [
+      "a",
+      "b"
+    ],
+    "explanation": "API Gateway usage plans combined with API keys enforce per-customer throttling and quotas at the API layer. Stage throttling, WAF rate rules, and Lambda concurrency all act on aggregate traffic or IP addresses, not on customers. Remember: per-client tiers and quotas mean usage plans plus API keys."
+  },
+  {
+    "id": "resilient-2.1-14",
+    "domain": "resilient",
+    "services": [
+      "Amazon API Gateway",
+      "Amazon SQS",
+      "AWS Lambda",
+      "Amazon RDS"
+    ],
+    "text": "A company's mobile app submits survey responses to a REST API in Amazon API Gateway. The API invokes an AWS Lambda function that writes each response to an Amazon RDS for PostgreSQL database. During marketing campaigns, traffic increases 50 times within minutes. The function is throttled, the database runs out of connections, and some responses are lost.\n\nResponses do not need to be stored immediately. The app needs only an acknowledgment that a response was received.\n\nWhich solution will prevent lost responses with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Request a higher account concurrency quota and raise the reserved concurrency of the function to match the peak.",
+        "note": "More concurrent functions reduce throttling but open even more database connections during spikes, so the database is still overwhelmed."
+      },
+      {
+        "id": "b",
+        "text": "Place an Amazon RDS Proxy between the Lambda function and the database so that the function reuses pooled connections.",
+        "note": "RDS Proxy pools connections and protects the database, but the function is still throttled during a 50-times spike, and API Gateway returns errors for those requests, so responses are still lost."
+      },
+      {
+        "id": "c",
+        "text": "Integrate the API method directly with an Amazon SQS queue, and have the function consume the queue with a maximum concurrency.",
+        "note": "API Gateway can call SQS directly and acknowledge the request once the message is stored. The queue absorbs the spike, and the maximum concurrency setting limits how many database connections the function opens."
+      },
+      {
+        "id": "d",
+        "text": "Enable API Gateway caching on the API stage with a 300-second TTL to absorb repeated requests during campaigns.",
+        "note": "API Gateway caching returns cached responses for repeated read requests. It does not store or buffer new survey submissions."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "When the client needs only an acknowledgment, put a queue in front of the slow writer. API Gateway can integrate directly with SQS, and a Lambda consumer with bounded concurrency drains the queue at a rate the database can handle. Remember: buffer writes with SQS; read replicas and caches only help reads."
+  },
+  {
+    "id": "resilient-2.1-15",
+    "domain": "resilient",
+    "services": [
+      "Amazon API Gateway",
+      "AWS Lambda",
+      "Amazon DynamoDB"
+    ],
+    "text": "A company is building a customer support chat feature for its web application. Messages from support agents must appear in the customer's browser immediately, without the browser asking for them. Messages from customers must reach the backend over the same connection. The number of open conversations is unpredictable.\n\nThe company wants to avoid managing servers.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a REST API in Amazon API Gateway with AWS Lambda integrations. Have the browser call the API every 2 seconds to check for new messages.",
+        "note": "Polling every 2 seconds adds delay and cost, and the server cannot push messages. The browser has to ask for each message."
+      },
+      {
+        "id": "b",
+        "text": "Create an HTTP API in Amazon API Gateway with AWS Lambda integrations that return new messages in each response.",
+        "note": "HTTP APIs use a request-response model. The backend cannot send a message to the browser unless the browser first makes a request."
+      },
+      {
+        "id": "c",
+        "text": "Run a WebSocket server on Amazon EC2 instances in an Auto Scaling group behind an Application Load Balancer.",
+        "note": "Application Load Balancers support WebSocket connections, so this works technically. However, the company must manage the EC2 instances, which the requirements rule out."
+      },
+      {
+        "id": "d",
+        "text": "Create an API Gateway WebSocket API with Lambda route integrations. Store connection IDs in DynamoDB and post messages to each connection.",
+        "note": "API Gateway WebSocket APIs keep a two-way connection open and let the backend push messages to a connection ID. API Gateway, Lambda, and DynamoDB are serverless and scale with the number of connections."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "For serverless two-way, real-time communication, use an API Gateway WebSocket API, store connection IDs, and post messages back through the @connections callback. REST and HTTP APIs are request-response only. Remember: server push without servers points to WebSocket APIs."
+  },
+  {
+    "id": "resilient-2.1-16",
+    "domain": "resilient",
+    "services": [
+      "AWS Lambda",
+      "Amazon S3"
+    ],
+    "text": "A company runs many AWS Lambda functions in one AWS account. A batch-import function is invoked by Amazon S3 event notifications when partners upload files. When a partner uploads a large batch, the import function scales to thousands of concurrent executions. Customer-facing API functions in the same account are then throttled.\n\nImports can take longer to complete, but they must still be processed. The customer-facing functions must always have concurrency available.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure reserved concurrency of 200 on the batch-import function.",
+        "note": "Reserved concurrency caps the import function at 200 concurrent executions, so the rest of the account pool stays available for the API functions. Throttled asynchronous invocations are retried, so imports still complete, more slowly."
+      },
+      {
+        "id": "b",
+        "text": "Set the maximum event age for asynchronous invocations of the batch-import function to 1 hour.",
+        "note": "Maximum event age controls how long Lambda keeps retrying an event. It does not limit how many copies of the function run at the same time."
+      },
+      {
+        "id": "c",
+        "text": "Configure reserved concurrency of 0 on the batch-import function during business hours.",
+        "note": "Reserved concurrency of 0 throttles every invocation of the function. Imports would stop during business hours, and events retried past their maximum age would be lost."
+      },
+      {
+        "id": "d",
+        "text": "Request an increase to the account's concurrent executions quota.",
+        "note": "A higher quota raises the ceiling, but nothing stops the import function from consuming the extra concurrency as well. The API functions are not guaranteed capacity."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Reserved concurrency both guarantees and caps a function's concurrency, carving it out of the account's shared pool. Capping a bursty function protects the other functions in the account. Remember: reserved concurrency limits scaling; provisioned concurrency pre-warms environments for latency."
+  },
+  {
+    "id": "resilient-2.1-17",
+    "domain": "resilient",
+    "services": [
+      "AWS Lambda",
+      "Amazon SQS",
+      "Amazon S3"
+    ],
+    "text": "A company uses Amazon S3 event notifications to invoke an AWS Lambda function asynchronously for each uploaded document. When processing still fails after Lambda's automatic retries, the operations team needs a record of the failure in an Amazon SQS queue. Each record must contain the original event, the error type, the stack trace, and the number of invocation attempts.\n\nWhich solution will meet these requirements with the LEAST custom code?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure an SQS dead-letter queue on the Lambda function.",
+        "note": "A Lambda dead-letter queue receives the original event with only the request ID and a short error code and message as attributes. It does not include the stack trace or the attempt count."
+      },
+      {
+        "id": "b",
+        "text": "Configure an on-failure destination on the Lambda function that sends invocation records to the SQS queue.",
+        "note": "An on-failure destination receives an invocation record that includes the original request payload, the error response with type and stack trace, and the approximate invoke count. It requires only configuration."
+      },
+      {
+        "id": "c",
+        "text": "Add error handling to the function code that catches exceptions and sends the event and error details to the SQS queue.",
+        "note": "This captures the details but requires custom code in every function, and it misses failures such as timeouts that occur before the handler can run its catch block."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon CloudWatch Logs subscription filter on the function's log group that sends error lines to a second Lambda function that writes to the SQS queue.",
+        "note": "This requires a second function and log parsing. The log lines do not contain the original S3 event unless the function logs it."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "For asynchronous Lambda invocations, on-failure destinations send a rich invocation record (request payload, response with error details, and context such as invoke count) to SQS, SNS, EventBridge, Lambda, or S3. Remember: destinations are the newer, more detailed replacement for Lambda dead-letter queues."
+  },
+  {
+    "id": "resilient-2.1-18",
+    "domain": "resilient",
+    "services": [
+      "AWS Lambda",
+      "Amazon SQS"
+    ],
+    "text": "An AWS Lambda function processes payment messages from an Amazon SQS standard queue in batches of 10. When one message in a batch fails, the function raises an error and all 10 messages return to the queue. The 9 messages that succeeded are then processed again, which causes duplicate payments in a downstream system that is not idempotent.\n\nThe company must keep the batch size of 10 for throughput. Only the failed messages must be retried.\n\nWhich solution will meet these requirements with the LEAST development effort?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Set the batch size of the event source mapping to 1 and raise its maximum concurrency to keep throughput.",
+        "note": "A batch size of 1 retries only the failed message, but it breaks the requirement to keep the batch size of 10."
+      },
+      {
+        "id": "b",
+        "text": "Replace the standard queue with an SQS FIFO queue that uses content-based deduplication.",
+        "note": "FIFO deduplication drops duplicate sends from producers. It does not stop Lambda from returning a whole failed batch to the queue for reprocessing."
+      },
+      {
+        "id": "c",
+        "text": "Set the visibility timeout of the queue to six times the function timeout and add a redrive policy to a dead-letter queue.",
+        "note": "Six times the function timeout is the recommended visibility timeout for Lambda event sources, and a DLQ isolates poison messages. However, every failed batch still returns all 10 messages to the queue."
+      },
+      {
+        "id": "d",
+        "text": "Turn on ReportBatchItemFailures for the event source mapping, and return the IDs of the failed messages from the function.",
+        "note": "With partial batch responses, Lambda deletes the successful messages and returns only the listed failures to the queue. This needs a small code change and no change to the batch size."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Partial batch responses (ReportBatchItemFailures) let a Lambda SQS consumer report which messages failed so that only those are retried. Without it, any error retries the entire batch. Remember: batch retries need idempotent consumers or partial batch responses."
+  },
+  {
+    "id": "resilient-2.1-19",
+    "domain": "resilient",
+    "services": [
+      "Amazon EKS",
+      "AWS Fargate",
+      "Amazon EC2"
+    ],
+    "text": "A company is moving its Kubernetes workloads from an on-premises cluster to Amazon Elastic Kubernetes Service (Amazon EKS). The company wants to minimize the work of patching and replacing worker nodes. Every node must run a logging and security agent that the security team deploys as a Kubernetes DaemonSet. Some pods require privileged containers.\n\nWhich compute option will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Run all pods on AWS Fargate by creating Fargate profiles for every namespace.",
+        "note": "EKS on Fargate removes node management, but Fargate does not support DaemonSets or privileged containers. The security agent and some pods cannot run."
+      },
+      {
+        "id": "b",
+        "text": "Migrate the workloads to Amazon ECS on AWS Fargate.",
+        "note": "Moving to Amazon ECS means rewriting the Kubernetes manifests and DaemonSet-based tooling. ECS on Fargate also does not support privileged containers."
+      },
+      {
+        "id": "c",
+        "text": "Run the pods on Amazon EKS managed node groups.",
+        "note": "Managed node groups provision EC2 nodes in an Auto Scaling group and handle updates and graceful node replacement. They run DaemonSets and privileged containers because the pods run on EC2 instances."
+      },
+      {
+        "id": "d",
+        "text": "Run the pods on self-managed EC2 nodes that use a custom AMI, and patch the AMI monthly.",
+        "note": "Self-managed nodes support DaemonSets and privileged containers, but the company must build, patch, and roll out node updates itself. This is more operational overhead than managed node groups."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Fargate removes node management but does not support DaemonSets or privileged pods. When those are required, EKS managed node groups give the lowest operational overhead on EC2. Remember: DaemonSet or privileged requirements rule out Fargate."
+  },
+  {
+    "id": "resilient-2.1-20",
+    "domain": "resilient",
+    "services": [
+      "Amazon ECS",
+      "AWS Fargate",
+      "Elastic Load Balancing"
+    ],
+    "text": "A company runs a web API on Amazon ECS with AWS Fargate behind an Application Load Balancer. Traffic is unpredictable. The tasks spend most of their time waiting on calls to downstream services, so CPU and memory usage stay low even when response times increase. Load tests show that each task performs well up to about 1,000 requests each minute.\n\nThe company wants the service to scale automatically so that each task stays near that load.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure ECS Service Auto Scaling with a target tracking policy on average CPU utilization of 50%.",
+        "note": "Because the tasks are I/O bound, CPU utilization stays low under heavy load. The policy would not add tasks when they are needed."
+      },
+      {
+        "id": "b",
+        "text": "Configure ECS Service Auto Scaling with target tracking on ALBRequestCountPerTarget with a target value of 1,000.",
+        "note": "Request count per target directly measures the load on each task. Target tracking adds or removes tasks to keep each task near 1,000 requests each minute."
+      },
+      {
+        "id": "c",
+        "text": "Create an ECS capacity provider for an EC2 Auto Scaling group and enable managed scaling.",
+        "note": "Capacity providers with managed scaling scale EC2 instances for the cluster. They do not change the number of tasks in the service, and the service runs on Fargate."
+      },
+      {
+        "id": "d",
+        "text": "Configure ECS Service Auto Scaling with scheduled actions that increase the task count during business hours.",
+        "note": "Scheduled scaling suits predictable patterns. The traffic is unpredictable, so scheduled actions would leave the service under-provisioned or over-provisioned."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Pick the scaling metric that matches the bottleneck. For I/O-bound web tasks behind an ALB, target tracking on ALBRequestCountPerTarget scales on actual load per task. Remember: CPU-based scaling fails when the workload is not CPU bound."
+  },
+  {
+    "id": "resilient-2.1-21",
+    "domain": "resilient",
+    "services": [
+      "Amazon EKS",
+      "AWS Fargate"
+    ],
+    "text": "A company runs stateless microservices in containers on an on-premises Kubernetes cluster. The company deploys the services with Kubernetes manifests and Helm charts and must keep using the Kubernetes API so that the services stay portable. The company is moving the services to AWS and does not want to provision, patch, or scale any EC2 instances. The company wants to pay only for the resources that each pod requests.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Deploy the services to an Amazon EKS cluster and run the pods on AWS Fargate by using Fargate profiles.",
+        "note": "EKS keeps the Kubernetes API, manifests, and Helm charts. With Fargate, each pod runs on capacity sized to its resource requests, and there are no EC2 instances to manage."
+      },
+      {
+        "id": "b",
+        "text": "Deploy the services to an Amazon EKS cluster that uses managed node groups with Amazon EC2 Auto Scaling.",
+        "note": "Managed node groups simplify node lifecycle, but the company still runs and pays for EC2 instances and must start node version updates. This breaks the requirement to avoid EC2 instances."
+      },
+      {
+        "id": "c",
+        "text": "Convert the services to Amazon ECS task definitions and run them on AWS Fargate.",
+        "note": "ECS on Fargate removes instance management, but ECS does not use the Kubernetes API. The company would have to rewrite its manifests and Helm charts."
+      },
+      {
+        "id": "d",
+        "text": "Install Kubernetes on Amazon EC2 instances by using kOps and configure the Kubernetes Cluster Autoscaler.",
+        "note": "A self-managed cluster keeps the Kubernetes API, but the company must manage the control plane and the EC2 worker nodes."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "When Kubernetes is a requirement and the company wants no nodes to manage, use Amazon EKS with Fargate. Fargate bills for the vCPU and memory requested by each pod. Remember: ECS vs EKS is decided by the Kubernetes requirement; Fargate vs EC2 is decided by who manages the servers."
+  },
+  {
+    "id": "resilient-2.1-22",
+    "domain": "resilient",
+    "services": [
+      "Amazon EC2 Auto Scaling",
+      "Amazon CloudWatch"
+    ],
+    "text": "A company runs a CPU-bound web application on Amazon EC2 instances in an Auto Scaling group behind an Application Load Balancer. Traffic changes throughout the day in a pattern that the company cannot predict. The group uses a simple scaling policy that adds one instance when a CloudWatch alarm fires, followed by a 300-second cooldown. Capacity lags behind demand, and the group sometimes adds and removes instances repeatedly.\n\nThe company wants average CPU utilization to stay near 60% with the LEAST ongoing tuning.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Replace the simple scaling policy with a target tracking scaling policy that uses average CPU utilization with a target value of 60%.",
+        "note": "Target tracking creates and manages its own alarms and adjusts capacity in proportion to the difference from the target. It keeps CPU near 60% without manual tuning of steps or thresholds."
+      },
+      {
+        "id": "b",
+        "text": "Replace the simple scaling policy with step scaling policies that add or remove different numbers of instances at several CPU thresholds.",
+        "note": "Step scaling reacts in proportion to the alarm breach, but the company must define and keep tuning the alarms, thresholds, and step sizes."
+      },
+      {
+        "id": "c",
+        "text": "Create scheduled scaling actions that set the desired capacity for each hour of the day.",
+        "note": "Scheduled actions suit predictable patterns. This traffic cannot be predicted, so fixed schedules would over-provision or under-provision."
+      },
+      {
+        "id": "d",
+        "text": "Change the simple scaling policy to add three instances and reduce the cooldown period to 60 seconds.",
+        "note": "Larger adjustments with shorter cooldowns can react faster but are likely to overshoot and cause more oscillation. The values still need manual tuning."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Target tracking is the default choice when a metric such as average CPU should stay near a value: AWS manages the alarms and the size of each adjustment. Step and simple scaling need manual thresholds. Remember: scheduled scaling is for known patterns, target tracking for unknown ones."
+  },
+  {
+    "id": "resilient-2.1-23",
+    "domain": "resilient",
+    "services": [
+      "Amazon EC2 Auto Scaling"
+    ],
+    "text": "A company runs a payroll application on Amazon EC2 instances in an Auto Scaling group with a target tracking scaling policy. Every weekday at 08:00, thousands of employees sign in at once and the required capacity jumps from 4 instances to 40 instances within 10 minutes. New instances need 8 minutes to bootstrap. Users receive errors for the first 15 minutes of each weekday. For the rest of the day, load changes in a pattern that the company cannot predict.\n\nWhich combination of steps will meet these requirements MOST cost-effectively? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a scheduled action that raises the minimum capacity of the group to 40 at 07:45 each weekday, and another scheduled action that lowers the minimum capacity to 4 at 09:30 each weekday.",
+        "note": "The scheduled action brings 40 instances into service before the 08:00 surge, which covers the 8-minute bootstrap time. Lowering the minimum afterward lets the group shrink again."
+      },
+      {
+        "id": "b",
+        "text": "Keep the target tracking scaling policy to adjust capacity during the rest of the day.",
+        "note": "Target tracking handles the unpredictable load outside the morning surge and works alongside the scheduled actions, which set the capacity floor."
+      },
+      {
+        "id": "c",
+        "text": "Increase the health check grace period of the group to 15 minutes.",
+        "note": "The grace period delays health checks on new instances. It does not launch instances earlier, so the surge still arrives before capacity is ready."
+      },
+      {
+        "id": "d",
+        "text": "Set the minimum capacity of the group to 40 at all times.",
+        "note": "This removes the morning errors but runs 40 instances all day and night, which is not cost-effective."
+      },
+      {
+        "id": "e",
+        "text": "Replace the target tracking scaling policy with a simple scaling policy that has no cooldown period.",
+        "note": "A simple scaling policy still reacts only after the alarm fires. With an 8-minute bootstrap, instances arrive after the surge has started."
+      }
+    ],
+    "correct": [
+      "a",
+      "b"
+    ],
+    "explanation": "Combine scheduled scaling for a known, sharp surge with target tracking for the unpredictable rest of the day. Reactive policies cannot cover a surge that is faster than instance bootstrap time. Remember: scheduled actions set the capacity floor in advance; dynamic policies scale above it."
+  },
+  {
+    "id": "resilient-2.1-24",
+    "domain": "resilient",
+    "services": [
+      "Amazon EC2 Auto Scaling"
+    ],
+    "text": "A company runs an analytics web application on Amazon EC2 instances in an Auto Scaling group with a target tracking scaling policy. Load follows daily and weekly cycles, but the time and size of the peaks change gradually from week to week. New instances need 10 minutes to initialize, so capacity arrives after each daily ramp-up has started.\n\nThe company wants capacity in place before each ramp-up without maintaining scaling schedules by hand, and wants to minimize cost.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create scheduled scaling actions for each day of the week based on last month's peaks. Update the schedules each month.",
+        "note": "Scheduled actions can add capacity ahead of the peaks, but the company must keep updating them as the pattern shifts. This breaks the requirement to avoid maintaining schedules by hand."
+      },
+      {
+        "id": "b",
+        "text": "Replace the target tracking policy with step scaling policies that use lower CPU thresholds.",
+        "note": "Lower thresholds start scaling earlier but remain reactive to load that is already arriving. They also keep more capacity running than needed at other times."
+      },
+      {
+        "id": "c",
+        "text": "Add a predictive scaling policy in forecast and scale mode, and keep the target tracking policy.",
+        "note": "Predictive scaling learns daily and weekly patterns from the group's history and launches capacity ahead of forecast load. Its forecast updates as the pattern shifts, and target tracking still handles unexpected changes."
+      },
+      {
+        "id": "d",
+        "text": "Raise the minimum capacity of the group to the highest peak capacity from the previous month.",
+        "note": "This keeps peak capacity running all the time, which does not minimize cost."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Predictive scaling uses machine learning on historical load to forecast cyclical demand and launches instances in advance, which suits slow-initializing instances. It complements target tracking. Remember: predictive scaling for recurring cycles, scheduled scaling for fixed known events."
+  },
+  {
+    "id": "resilient-2.1-25",
+    "domain": "resilient",
+    "services": [
+      "Amazon EC2 Auto Scaling",
+      "Amazon SQS",
+      "Amazon CloudWatch"
+    ],
+    "text": "A company runs video transcoding workers on Amazon EC2 instances in an Auto Scaling group. The workers poll an Amazon SQS queue, and each instance processes one message at a time in about 2 minutes. Each message must be processed within 10 minutes of arrival, so each instance can have a backlog of no more than 5 messages. The queue depth ranges from zero to several thousand messages.\n\nThe company wants the group to scale so that the processing latency target is met as the queue grows and shrinks.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a target tracking scaling policy that keeps average CPU utilization of the group at 70%.",
+        "note": "Each busy worker runs at high CPU whether the backlog is 1 message or 1,000 messages. CPU does not show how far behind the queue is."
+      },
+      {
+        "id": "b",
+        "text": "Create a step scaling policy that adds one instance for every 100 messages in the ApproximateNumberOfMessagesVisible metric.",
+        "note": "One instance per 100 messages lets each instance carry a backlog of up to 100 messages, far more than the 5 that meets the latency target. The steps must also be tuned by hand."
+      },
+      {
+        "id": "c",
+        "text": "Create a target tracking scaling policy on the queue's ApproximateNumberOfMessagesVisible metric with a target value of 5 messages.",
+        "note": "This metric is the total queue depth, which does not change in proportion to the group size. The group would try to shrink the whole queue to 5 messages, which over-provisions."
+      },
+      {
+        "id": "d",
+        "text": "Publish a custom metric for backlog per instance (visible messages divided by running instances) and target track it at 5.",
+        "note": "Backlog per instance changes in proportion to the group size. Targeting 5 messages per instance keeps each message's wait within 10 minutes as the queue changes."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "For queue-based scaling, AWS recommends a backlog-per-instance metric, with the target set to the acceptable latency divided by the processing time per message. Raw queue depth is not proportional to group size. Remember: target = acceptable latency / processing time."
+  },
+  {
+    "id": "resilient-2.1-26",
+    "domain": "resilient",
+    "services": [
+      "Amazon EC2 Auto Scaling",
+      "Elastic Load Balancing"
+    ],
+    "text": "A company runs a web application on Amazon EC2 instances in an Auto Scaling group behind an Application Load Balancer. Occasionally the application process on an instance stops responding while the operating system keeps running. The load balancer marks the instance as unhealthy and stops sending it traffic, but the instance stays in the group. The group runs with reduced capacity until an engineer terminates the instance.\n\nThe company wants unhealthy instances to be replaced automatically with the LEAST operational overhead.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Amazon CloudWatch alarm on the StatusCheckFailed metric for each instance with an EC2 recover action.",
+        "note": "EC2 status checks test the hardware and operating system. A hung application process does not fail them, and the recover action only moves the same instance to new hardware."
+      },
+      {
+        "id": "b",
+        "text": "Turn on Elastic Load Balancing health checks for the Auto Scaling group.",
+        "note": "With ELB health checks turned on, the Auto Scaling group treats instances that fail the load balancer health check as unhealthy, terminates them, and launches replacements."
+      },
+      {
+        "id": "c",
+        "text": "Create an AWS Lambda function that runs every 5 minutes, reads target health from the load balancer, and terminates unhealthy instances.",
+        "note": "This works but adds custom code to maintain. Auto Scaling can use the load balancer health checks natively."
+      },
+      {
+        "id": "d",
+        "text": "Reduce the health check interval and the unhealthy threshold of the load balancer target group.",
+        "note": "Faster checks detect the failure sooner, but the Auto Scaling group still relies on EC2 status checks and does not replace the instance."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "By default, Auto Scaling uses only EC2 status checks. Turning on ELB health checks lets the group replace instances whose application fails the load balancer's health check. Remember: the load balancer stops routing, but only the Auto Scaling group replaces."
+  },
+  {
+    "id": "resilient-2.1-27",
+    "domain": "resilient",
+    "services": [
+      "Amazon EC2 Auto Scaling",
+      "Amazon SQS"
+    ],
+    "text": "A company runs batch workers on Amazon EC2 instances in an Auto Scaling group that scales on Amazon SQS queue depth. The instances are not behind a load balancer. Each job takes up to 20 minutes. When the group scales in, instances are often terminated in the middle of a job. The job message reappears in the queue after the visibility timeout expires, and the work starts over.\n\nThe company wants each instance to finish its current job before it is terminated.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add a termination lifecycle hook with a 30-minute heartbeat timeout. Have the worker call CompleteLifecycleAction after its job.",
+        "note": "A termination lifecycle hook holds the instance in a wait state before it is terminated. The worker finishes the job and signals completion, and the timeout covers the 20-minute maximum."
+      },
+      {
+        "id": "b",
+        "text": "Change the termination policy of the group to NewestInstance so that the instances least likely to hold long jobs are removed first.",
+        "note": "A termination policy only chooses which instance to terminate. Any instance can be in the middle of a job, and the chosen instance is still terminated immediately."
+      },
+      {
+        "id": "c",
+        "text": "Add a warm pool with an instance reuse policy so that scaled-in instances return to the warm pool in a stopped state.",
+        "note": "With an instance reuse policy, scaled-in instances are stopped and returned to the warm pool instead of terminated. Stopping the instance still interrupts the running job."
+      },
+      {
+        "id": "d",
+        "text": "Use a step scaling policy that removes only one instance at a time, with a 20-minute cooldown between scale-in activities.",
+        "note": "Slower scale-in reduces how many jobs are interrupted, but each instance that is removed can still be in the middle of a job."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Lifecycle hooks pause instances during launch or termination so that custom actions, such as finishing in-flight work, can complete. Termination policies, warm pools, and slower scale-in change which or how many instances leave the group, not whether a running job finishes. Remember: to let work finish before termination, use a termination lifecycle hook (or instance scale-in protection set by the worker)."
+  },
+  {
+    "id": "resilient-2.1-28",
+    "domain": "resilient",
+    "services": [
+      "Elastic Load Balancing",
+      "Amazon ECS"
+    ],
+    "text": "A company has split its monolithic application into three services that run on Amazon ECS: orders, catalog, and users. Clients must continue to use a single domain name, and requests must be routed by URL path (/orders, /catalog, and /users) to the matching service. Each service must scale independently.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a Network Load Balancer for each service. Create an Amazon Route 53 record for each load balancer.",
+        "note": "Network Load Balancers work at layer 4 and cannot route by URL path. Separate records also mean separate domain names, and three load balancers cost more than one."
+      },
+      {
+        "id": "b",
+        "text": "Create one Network Load Balancer with a listener on a different port for each service.",
+        "note": "Port-based routing forces clients to change the ports they call. A Network Load Balancer cannot inspect the URL path."
+      },
+      {
+        "id": "c",
+        "text": "Create one Application Load Balancer with path-pattern listener rules that forward to a target group for each service.",
+        "note": "An Application Load Balancer routes HTTP requests by path to different target groups behind one domain name. Each ECS service registers its own target group and scales independently."
+      },
+      {
+        "id": "d",
+        "text": "Create an Application Load Balancer for each service. Put an Amazon CloudFront distribution in front with a cache behavior for each path.",
+        "note": "This routes by path but runs three load balancers and a distribution, which costs more and adds more to operate than a single load balancer."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "A single Application Load Balancer with path-based (or host-based) listener rules is the standard front door for microservices that share a domain name. Network Load Balancers cannot see HTTP paths. Remember: layer 7 routing needs an ALB."
+  },
+  {
+    "id": "resilient-2.1-29",
+    "domain": "resilient",
+    "services": [
+      "Elastic Load Balancing",
+      "Amazon EC2 Auto Scaling"
+    ],
+    "text": "A gaming company runs multiplayer game servers on Amazon EC2 instances in an Auto Scaling group across two Availability Zones. Game clients send traffic over UDP. Some players connect from corporate networks whose firewalls allow outbound traffic only to specific IP addresses, so the entry point must have a fixed IP address in each Availability Zone.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Place an Application Load Balancer in front of the Auto Scaling group and give players the IP addresses of its nodes.",
+        "note": "Application Load Balancers handle HTTP and HTTPS only and do not support UDP. Their IP addresses also change over time."
+      },
+      {
+        "id": "b",
+        "text": "Place an Amazon CloudFront distribution in front of the game servers.",
+        "note": "CloudFront delivers HTTP and HTTPS content and does not forward UDP game traffic. Its edge IP addresses are not fixed."
+      },
+      {
+        "id": "c",
+        "text": "Place a Gateway Load Balancer in front of the Auto Scaling group and register the game servers as its targets.",
+        "note": "Gateway Load Balancers send traffic to virtual appliances such as firewalls for inspection. They are not an entry point for client traffic to application servers."
+      },
+      {
+        "id": "d",
+        "text": "Place a Network Load Balancer with a UDP listener in front of the group, with an Elastic IP address in each Availability Zone.",
+        "note": "Network Load Balancers support UDP and can use one Elastic IP address in each Availability Zone, which gives players fixed addresses to allow through their firewalls."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Network Load Balancers handle TCP and UDP at layer 4, with very high throughput and support for static Elastic IP addresses in each Availability Zone. Remember: UDP or static IP requirements point to an NLB (or Global Accelerator for global anycast IPs)."
+  },
+  {
+    "id": "resilient-2.1-30",
+    "domain": "resilient",
+    "services": [
+      "Elastic Load Balancing",
+      "Amazon VPC",
+      "Amazon EC2 Auto Scaling"
+    ],
+    "text": "A company must inspect all inbound internet traffic to its application VPC. The security team requires a specific third-party firewall product from AWS Marketplace because of existing licenses and rule sets. The firewall appliances run on Amazon EC2 instances that must scale out and in and stay highly available. Traffic must pass through the appliances transparently, with the original source and destination IP addresses preserved.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Deploy AWS Network Firewall in the VPC and update the route tables to send inbound traffic through the firewall endpoints.",
+        "note": "Network Firewall is a managed firewall that inspects traffic transparently, but it is not the third-party product that the security team requires."
+      },
+      {
+        "id": "b",
+        "text": "Deploy a Gateway Load Balancer with the appliance Auto Scaling group as targets, and route inbound traffic through its endpoints.",
+        "note": "A Gateway Load Balancer distributes traffic to third-party appliances by using GENEVE encapsulation, which keeps the original packets unchanged. The endpoints act as route table targets, and the appliances scale in an Auto Scaling group."
+      },
+      {
+        "id": "c",
+        "text": "Deploy a Network Load Balancer in front of the appliances and set the load balancer as the target of the ingress route table.",
+        "note": "A Network Load Balancer cannot be used as a route table target for transparent inspection. It is designed for client traffic to applications, not bump-in-the-wire appliances."
+      },
+      {
+        "id": "d",
+        "text": "Deploy an Application Load Balancer in front of the appliances and forward requests from the appliances to the application.",
+        "note": "An Application Load Balancer handles only HTTP and HTTPS and ends client connections, so traffic does not pass transparently and other protocols are not inspected."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Gateway Load Balancer is built for scaling and making highly available fleets of third-party virtual appliances that inspect traffic transparently, using endpoints as route targets. Remember: ALB for HTTP apps, NLB for TCP/UDP apps, GWLB for inline appliances."
+  },
+  {
+    "id": "resilient-2.1-31",
+    "domain": "resilient",
+    "services": [
+      "Elastic Load Balancing",
+      "Amazon EC2 Auto Scaling"
+    ],
+    "text": "A company runs version 1 of a service on Amazon EC2 instances in an Auto Scaling group behind an Application Load Balancer. The company has deployed version 2 to a second Auto Scaling group. The company wants to send exactly 10% of requests to version 2 at first and then increase the share gradually. If errors increase, all traffic must return to version 1 immediately, without waiting for DNS caches to expire.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a second Application Load Balancer for version 2. Use Amazon Route 53 weighted records to send 10% of traffic to the second load balancer.",
+        "note": "Weighted records split traffic, but clients and resolvers cache DNS answers, so a rollback does not take effect immediately. A second load balancer also adds cost and management."
+      },
+      {
+        "id": "b",
+        "text": "Register the version 2 group with a second target group. Change the listener rule to forward to both target groups with weights of 90 and 10.",
+        "note": "Weighted target groups let one listener rule split requests by percentage. Changing the weights takes effect at the load balancer immediately, so rollback does not depend on DNS."
+      },
+      {
+        "id": "c",
+        "text": "Register the version 2 instances in the existing target group and size the version 2 group to one tenth of the version 1 group.",
+        "note": "The traffic share would depend on instance counts and would shift whenever either group scales, so it cannot be held at an exact percentage."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon CloudFront distribution with an origin group that uses version 1 as the primary origin and version 2 as the secondary origin.",
+        "note": "Origin groups provide failover when the primary origin returns errors. They do not split traffic by percentage between two origins."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Application Load Balancer weighted target groups support canary and blue/green releases with precise percentages and instant rollback, because routing changes happen at the load balancer rather than in DNS. Remember: Route 53 weighting is subject to DNS caching."
+  },
+  {
+    "id": "resilient-2.1-32",
+    "domain": "resilient",
+    "services": [
+      "Amazon ElastiCache",
+      "Amazon EC2 Auto Scaling",
+      "Elastic Load Balancing"
+    ],
+    "text": "An ecommerce company runs its web tier on Amazon EC2 instances in an Auto Scaling group behind an Application Load Balancer with sticky sessions turned on. Session data, including shopping carts, is stored in memory on each instance. When an instance is terminated during scale-in or fails, its users lose their carts and must sign in again. Load is also uneven across instances.\n\nThe company wants to make the web tier stateless. Session reads and writes must have sub-millisecond latency.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Store session data in an Amazon DynamoDB table with a DynamoDB Accelerator (DAX) cluster in front of it, and turn off sticky sessions.",
+        "note": "DAX serves cached reads in microseconds, but it is a write-through cache: every write goes to DynamoDB first, so session writes do not reach sub-millisecond latency."
+      },
+      {
+        "id": "b",
+        "text": "Store session data in an Amazon DynamoDB table that all instances share, and turn off sticky sessions on the load balancer.",
+        "note": "DynamoDB makes sessions shared and durable, but it delivers single-digit millisecond latency, which does not meet the sub-millisecond requirement."
+      },
+      {
+        "id": "c",
+        "text": "Store session data as files on an Amazon EFS file system that is mounted on all instances, and turn off sticky sessions.",
+        "note": "EFS shares the data across instances, but EFS write latency is in the milliseconds and a file system is not designed for many small, frequently updated session records. It does not meet the sub-millisecond requirement for writes."
+      },
+      {
+        "id": "d",
+        "text": "Store session data in an Amazon ElastiCache (Redis OSS) replication group with a Multi-AZ replica, and turn off sticky sessions.",
+        "note": "ElastiCache is an in-memory key-value store with sub-millisecond latency. Every instance can read any session, so any instance can serve any request and instances can be terminated without losing sessions."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Moving session state out of the instances into an external in-memory store such as ElastiCache makes the web tier stateless, so instances can scale in or fail without user impact. DynamoDB is single-digit milliseconds, and DAX accelerates only reads because it writes through to DynamoDB. Remember: sub-millisecond reads and writes for shared sessions point to ElastiCache."
+  },
+  {
+    "id": "resilient-2.1-33",
+    "domain": "resilient",
+    "services": [
+      "Amazon DynamoDB",
+      "AWS Lambda",
+      "Amazon API Gateway"
+    ],
+    "text": "A company is building a serverless web application with Amazon API Gateway and AWS Lambda. The application must store user session data, and sessions must expire 30 minutes after a user's last request. Traffic is unpredictable and can increase from zero to thousands of requests each second.\n\nThe company does not want to plan capacity or manage servers, and expired sessions must be removed without custom cleanup code.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Store sessions in an Amazon DynamoDB table in on-demand mode. Enable Time to Live (TTL) on an expiration attribute that each request updates.",
+        "note": "On-demand mode scales with traffic without capacity planning, and TTL deletes expired items in the background at no cost, typically within a few days. The application treats a session as expired by checking the attribute on read."
+      },
+      {
+        "id": "b",
+        "text": "Store sessions in an Amazon ElastiCache (Redis OSS) cluster of cache.r7g nodes in a VPC, and connect the Lambda functions to the VPC.",
+        "note": "Keys can expire in Redis, but a node-based cluster requires the company to choose node types and counts and plan capacity for peaks."
+      },
+      {
+        "id": "c",
+        "text": "Store sessions in the /tmp directory of the Lambda execution environment.",
+        "note": "Each execution environment has its own /tmp storage, and environments are created and removed at any time. Other invocations cannot read the sessions reliably."
+      },
+      {
+        "id": "d",
+        "text": "Store sessions in an Amazon RDS for MySQL table. Use an Amazon EventBridge schedule to invoke a Lambda function that deletes expired rows every 5 minutes.",
+        "note": "RDS requires sizing a DB instance for peak load, and the cleanup function is custom code that the company must maintain."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "DynamoDB on-demand with TTL is a common serverless session store: no capacity planning, automatic removal of expired items, and access from any Lambda invocation. TTL deletion is not immediate, so the application also checks the expiration attribute when it reads. Remember: TTL removes expired items without consuming write capacity."
+  },
+  {
+    "id": "resilient-2.1-34",
+    "domain": "resilient",
+    "services": [
+      "Amazon MQ"
+    ],
+    "text": "A company is migrating several on-premises Java applications to AWS. The applications exchange messages through an Apache ActiveMQ broker by using the JMS API and the OpenWire and STOMP protocols. The company does not have time to rewrite the messaging code. The company wants to stop patching the broker and managing its failover.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Replace the broker with Amazon SQS queues and change the applications to use the AWS SDK to send and receive messages.",
+        "note": "Amazon SQS is fully managed, but it does not support OpenWire or STOMP. The messaging code would need to be rewritten."
+      },
+      {
+        "id": "b",
+        "text": "Install ActiveMQ on two Amazon EC2 instances in different Availability Zones and configure an active/standby pair with shared storage on Amazon EFS.",
+        "note": "This keeps the protocols, but the company still patches the broker software and manages failover itself."
+      },
+      {
+        "id": "c",
+        "text": "Create an Amazon MQ for ActiveMQ active/standby broker that spans two Availability Zones. Point the applications to the broker endpoints.",
+        "note": "Amazon MQ is a managed ActiveMQ and RabbitMQ service that supports JMS, OpenWire, STOMP, and other standard protocols. AWS handles patching and automatic failover, and the applications only need new connection endpoints."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon Managed Streaming for Apache Kafka (Amazon MSK) cluster and change the applications to use Kafka producers and consumers.",
+        "note": "Amazon MSK is a managed Kafka service. Kafka uses its own protocol, so the applications would need to be rewritten."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Amazon MQ is the lift-and-shift choice for applications that use standard messaging APIs and protocols such as JMS, AMQP, MQTT, OpenWire, or STOMP. SQS and SNS are the choice for new cloud-native applications. Remember: existing broker protocols point to Amazon MQ."
+  },
+  {
+    "id": "resilient-2.1-35",
+    "domain": "resilient",
+    "services": [
+      "Elastic Load Balancing",
+      "AWS Lambda"
+    ],
+    "text": "A company runs a monolithic web application on Amazon EC2 instances behind an Application Load Balancer. The company wants to gradually move features to AWS Lambda, starting with the notifications feature. Clients must keep using the same domain name and URLs. Requests to /notifications/* must go to the new Lambda function, and all other requests must continue to go to the monolith. The company wants to limit the risk of each change.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Put an Amazon CloudFront distribution in front of the load balancer with a /notifications/* cache behavior that uses a Lambda function URL origin.",
+        "note": "CloudFront can route the path to a Lambda function URL, but this adds a distribution to operate and requires moving the domain name to CloudFront. It has more overhead than a rule on the existing load balancer."
+      },
+      {
+        "id": "b",
+        "text": "Create an API in Amazon API Gateway for the notifications feature. Use Amazon Route 53 weighted records to split traffic between the API and the load balancer.",
+        "note": "Weighted DNS records split requests by percentage, not by URL path. Notification requests would still reach the monolith, and other requests would reach the new API."
+      },
+      {
+        "id": "c",
+        "text": "Create a second Application Load Balancer for the Lambda function and have clients call its DNS name for notification requests.",
+        "note": "This changes the URLs that clients must use, which breaks the requirement to keep the same domain name and URLs."
+      },
+      {
+        "id": "d",
+        "text": "Register the Lambda function in a new target group, and add a /notifications/* rule on the existing load balancer that forwards to it.",
+        "note": "Application Load Balancers can invoke Lambda functions as targets. A path-based rule sends only notification requests to the function while every other request still reaches the monolith."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "This is the strangler fig pattern: a routing layer sends one path at a time to new services while the monolith keeps handling the rest. The existing ALB can already do this, because ALBs support Lambda functions as targets and path-based rules. Remember: migrate incrementally behind the endpoint you already have before adding new layers."
+  },
+  {
+    "id": "resilient-2.1-36",
+    "domain": "resilient",
+    "services": [
+      "Amazon SQS",
+      "Amazon S3",
+      "Amazon EC2 Auto Scaling"
+    ],
+    "text": "A photo printing company runs a web tier on Amazon EC2 instances. When a customer uploads a photo, the web server renders a print-ready file before it responds, which takes about 1 minute of CPU time. The rendering software is a licensed Windows application installed on a custom AMI. During holiday peaks, the web servers become overloaded, requests time out, and some orders are lost.\n\nThe company wants the web tier to respond quickly, the rendering capacity to scale independently, and no orders to be lost.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Store each upload in Amazon S3, send an SQS message that references the object, and respond to the customer immediately.",
+        "note": "S3 stores the upload durably and SQS buffers the job, so the web tier responds without waiting for rendering and no order is lost during peaks."
+      },
+      {
+        "id": "b",
+        "text": "Run the rendering code on a separate Auto Scaling group of EC2 instances that scales on the queue backlog per instance.",
+        "note": "A separate worker tier scales with the amount of queued work, independent of the web tier."
+      },
+      {
+        "id": "c",
+        "text": "Send each rendering job to an Amazon Kinesis Data Streams stream that the rendering instances read from.",
+        "note": "Kinesis stores records durably, but each shard is read in order by one consumer, so a slow job blocks the jobs behind it, and rendering parallelism is capped by the shard count that the company must manage."
+      },
+      {
+        "id": "d",
+        "text": "Publish each job to an Amazon SNS topic with an HTTP subscription to the rendering instances.",
+        "note": "SNS pushes each message to the HTTP endpoint without a durable backlog. If the rendering instances are busy or scaling, delivery retries can be exhausted and jobs can be lost."
+      },
+      {
+        "id": "e",
+        "text": "Run the rendering code in AWS Lambda functions that are invoked by the SQS queue.",
+        "note": "Lambda would scale with the queue, but Lambda functions run on Linux-based runtimes. The licensed Windows rendering software cannot run in Lambda."
+      }
+    ],
+    "correct": [
+      "a",
+      "b"
+    ],
+    "explanation": "Decoupling slow work from the request path with a durable queue lets the front end respond immediately and the worker tier scale on backlog. Remember: SQS buffers work for pull-based consumers; SNS pushes without a backlog."
+  },
+  {
+    "id": "resilient-2.1-37",
+    "domain": "resilient",
+    "services": [
+      "Amazon S3",
+      "Amazon ElastiCache",
+      "Amazon EC2 Auto Scaling"
+    ],
+    "text": "A company runs a social web application on Amazon EC2 instances in an Auto Scaling group across three Availability Zones. The application keeps user sessions in memory and saves uploaded profile images to the Amazon EBS volume of the instance that receives the upload. After the group scales in, users are signed out and some profile images are missing.\n\nThe company wants any instance to serve any request and wants the group to keep scaling in and out with demand.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Store user sessions in an Amazon ElastiCache (Redis OSS) cluster that all instances use.",
+        "note": "An external session store removes session state from the instances, so users stay signed in when an instance terminates."
+      },
+      {
+        "id": "b",
+        "text": "Store uploaded images in an Amazon S3 bucket and save the object key with the user profile.",
+        "note": "S3 stores the images durably outside the instances, and every instance can read them in any Availability Zone."
+      },
+      {
+        "id": "c",
+        "text": "Turn on sticky sessions on the load balancer.",
+        "note": "Sticky sessions keep a user on one instance while it runs, but sessions and images on that instance are still lost when it terminates."
+      },
+      {
+        "id": "d",
+        "text": "Store uploaded images on one Provisioned IOPS SSD (io2) volume with EBS Multi-Attach enabled and attach it to every instance.",
+        "note": "Multi-Attach works only with instances in the same Availability Zone as the volume and needs a cluster-aware file system. It cannot serve instances in three Availability Zones."
+      },
+      {
+        "id": "e",
+        "text": "Turn on scale-in protection for all instances in the group.",
+        "note": "Scale-in protection stops the data loss by preventing the group from shrinking, which breaks the requirement to keep scaling with demand."
+      }
+    ],
+    "correct": [
+      "a",
+      "b"
+    ],
+    "explanation": "A stateless tier keeps no data on its instances: sessions go to a shared store such as ElastiCache or DynamoDB, and files go to Amazon S3 (or Amazon EFS when a file system is required). Remember: EBS volumes, including Multi-Attach, are bound to one Availability Zone."
+  },
+  {
+    "id": "resilient-2.1-38",
+    "domain": "resilient",
+    "services": [
+      "AWS Lambda",
+      "Amazon SQS"
+    ],
+    "text": "A company uses an AWS Lambda function to process messages from an Amazon SQS standard queue. The function calls a partner API that accepts no more than 50 concurrent requests. During spikes, Lambda scales out and the partner API rejects requests. Some messages contain data that the partner API will never accept.\n\nThe company wants to stay within the partner's limit without messages being set aside only because the function was throttled. Messages that fail repeatedly must be kept for investigation.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Set the maximum concurrency of the SQS event source mapping to 50.",
+        "note": "Maximum concurrency limits how many concurrent function invocations the event source mapping starts. Lambda stops reading more messages instead of throttling, so messages are not returned to the queue because of throttling."
+      },
+      {
+        "id": "b",
+        "text": "Set the reserved concurrency of the Lambda function to 50.",
+        "note": "Reserved concurrency caps the function, but the SQS pollers can still read more messages than the function can run. Throttled messages return to the queue and count as receives, so valid messages can reach the dead-letter queue."
+      },
+      {
+        "id": "c",
+        "text": "Create a dead-letter queue and configure a redrive policy on the source queue with a maximum receive count of 5.",
+        "note": "Messages that fail 5 times move to the dead-letter queue, where they are kept for investigation instead of being retried until they expire."
+      },
+      {
+        "id": "d",
+        "text": "Configure an on-failure destination on the Lambda function that sends failed events to a second SQS queue.",
+        "note": "Destinations apply to asynchronous invocations. Event source mappings for SQS invoke the function synchronously, so the destination is not used."
+      },
+      {
+        "id": "e",
+        "text": "Increase the batch size of the event source mapping to 50 messages.",
+        "note": "A larger batch size changes how many messages each invocation receives. It does not limit the number of concurrent invocations calling the partner API."
+      }
+    ],
+    "correct": [
+      "a",
+      "c"
+    ],
+    "explanation": "For SQS event sources, the event source mapping's maximum concurrency is the right way to limit downstream pressure; reserved concurrency throttles after messages are already received. Pair it with a dead-letter queue on the source queue for poison messages. Remember: Lambda destinations do not apply to SQS event sources."
+  },
+  {
+    "id": "resilient-2.1-39",
+    "domain": "resilient",
+    "services": [
+      "Amazon API Gateway",
+      "Amazon SQS",
+      "AWS Step Functions",
+      "Amazon EventBridge"
+    ],
+    "text": "A retailer is building a serverless order pipeline. Partners submit orders over HTTPS, and orders must be stored durably during traffic spikes. Each order must go through validation, payment, and inventory steps with retries, and support staff must be able to see each order's progress. When an order completes, the shipping, analytics, and loyalty teams must each receive an event, filtered by rules that each team defines. New teams are added often.\n\nWhich combination of steps will meet these requirements with the LEAST operational overhead? (Choose THREE.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a REST API in Amazon API Gateway that sends each order directly to an Amazon SQS queue.",
+        "note": "API Gateway accepts the HTTPS requests and stores each order in SQS without servers, which buffers spikes durably."
+      },
+      {
+        "id": "b",
+        "text": "Use a Lambda function that reads the queue to start an AWS Step Functions Standard workflow for each order that runs the three steps with retries.",
+        "note": "Step Functions runs the steps with built-in retries, and the execution history shows each order's progress to support staff."
+      },
+      {
+        "id": "c",
+        "text": "Publish an order-completed event to an Amazon EventBridge custom event bus. Have each team create its own rule with an event pattern.",
+        "note": "Each EventBridge rule filters events by content and routes them to the team's targets. New teams add rules without changing the pipeline."
+      },
+      {
+        "id": "d",
+        "text": "Run the validation, payment, and inventory steps in a script on an Amazon EC2 instance that reads from the queue.",
+        "note": "A script on EC2 requires server management and custom retry and tracking code, and the instance is a single point of failure."
+      },
+      {
+        "id": "e",
+        "text": "Send order-completed events to a single Amazon SQS queue that all teams poll.",
+        "note": "Consumers of one queue compete for messages, so each event reaches only one team. Queues also cannot filter by each team's rules."
+      },
+      {
+        "id": "f",
+        "text": "Ingest orders into an Amazon Kinesis Data Streams stream in provisioned mode and adjust the shard count before each expected peak.",
+        "note": "Kinesis can buffer orders, but provisioned shards must be managed and resized by the company, which adds operational overhead compared with SQS."
+      }
+    ],
+    "correct": [
+      "a",
+      "b",
+      "c"
+    ],
+    "explanation": "Each part of the pipeline gets the managed service built for it: API Gateway with SQS for durable intake, Step Functions for orchestration with retries and visibility, and EventBridge for rule-based fan-out to many consumers. Remember: queues buffer, workflows orchestrate, event buses route."
+  },
+  {
+    "id": "resilient-2.1-40",
+    "domain": "resilient",
+    "services": [
+      "Amazon S3",
+      "Amazon EventBridge",
+      "AWS Lambda"
+    ],
+    "text": "A company stores customer uploads in an Amazon S3 bucket. Three teams need to react to new objects. A virus-scanning AWS Lambda function must process every object under the uploads/ prefix. A thumbnail Lambda function must process only objects under uploads/ that end in .jpg. A compliance Lambda function must process every object larger than 1 GB. The company tried to configure S3 event notifications but received an error about overlapping configurations.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create three S3 event notification configurations for the object created event, each with its own prefix and suffix filter, and point each one to a function.",
+        "note": "S3 event notifications do not allow overlapping prefix and suffix filters for the same event type, which is the error the company received. They also cannot filter by object size."
+      },
+      {
+        "id": "b",
+        "text": "Create one S3 event notification that invokes a router Lambda function. Have the router inspect each event and invoke the correct functions.",
+        "note": "A router function works, but the company must write and maintain the routing code."
+      },
+      {
+        "id": "c",
+        "text": "Turn on Amazon EventBridge notifications for the bucket. Create three rules that match on key prefix, key suffix, and object size.",
+        "note": "With EventBridge, each rule can match overlapping sets of objects. Event patterns support prefix and suffix matching on the key and numeric matching on object size."
+      },
+      {
+        "id": "d",
+        "text": "Create one S3 event notification that publishes to an Amazon SNS topic. Subscribe all three functions and have each function ignore objects that it does not need.",
+        "note": "SNS fan-out delivers every event to every function, so each function needs filtering code and is invoked for objects it does not process."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "S3 integration with EventBridge removes the limits of S3 event notifications: overlapping filters, richer matching (such as object size), and many targets per event. Remember: when native S3 notification filters are too limited, send bucket events to EventBridge."
+  },
+  {
+    "id": "resilient-2.1-41",
+    "domain": "resilient",
+    "services": [
+      "Amazon SQS",
+      "AWS Lambda"
+    ],
+    "text": "A company sends account reminder messages through an Amazon SQS standard queue to an AWS Lambda function that sends emails. Password-reset reminders must reach the function 5 minutes after they are sent to the queue. Trial-expiry reminders must reach the function 10 minutes after they are sent. Both types of messages must continue to use the same queue.\n\nWhich solution will meet these requirements with the LEAST change to the application?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Have the producer set a per-message DelaySeconds value of 300 or 600 seconds, depending on the reminder type.",
+        "note": "Message timers on a standard queue hide each message for its own delay, up to 15 minutes. One queue can then deliver each reminder type after a different delay."
+      },
+      {
+        "id": "b",
+        "text": "Use Amazon EventBridge Scheduler one-time schedules that send each reminder to the queue at the required time.",
+        "note": "This works, but the producer must create a schedule for every message and manage schedule cleanup. A message attribute on the existing send call is a smaller change."
+      },
+      {
+        "id": "c",
+        "text": "Create two delay queues with delivery delays of 5 and 10 minutes, and have the producer send each reminder type to its own queue.",
+        "note": "Two delay queues give each type the right delay, but the company requires both types to keep using the same queue."
+      },
+      {
+        "id": "d",
+        "text": "Configure the queue as a delay queue with a delivery delay of 10 minutes.",
+        "note": "A queue-level delivery delay applies the same delay to every message. Password-reset reminders would arrive after 10 minutes instead of 5 minutes."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "SQS supports a delay for the whole queue (delay queue) and a delay for each message (message timer), both up to 15 minutes. Use message timers when different messages need different delays. Remember: message timers are not supported on FIFO queues, and delay is not the same as visibility timeout."
+  },
+  {
+    "id": "resilient-2.1-42",
+    "domain": "resilient",
+    "services": [
+      "Amazon SQS",
+      "Amazon S3"
+    ],
+    "text": "A medical imaging company uses an Amazon SQS queue to pass scan results from a Java producer application to a Java processing service. Each scan result is 20 MB to 50 MB, which is larger than the maximum SQS message size. The company wants to keep SQS to decouple the two applications.\n\nWhich solution will meet these requirements with the LEAST development effort?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Compress each scan result with gzip before sending it in the message body.",
+        "note": "Image data is already dense and does not compress enough to bring 20 MB to 50 MB payloads under the SQS message size limit."
+      },
+      {
+        "id": "b",
+        "text": "Use the Amazon SQS Extended Client Library for Java to store each payload in Amazon S3 and send a reference in the message.",
+        "note": "The Extended Client Library implements the claim-check pattern for the company: it stores large payloads in S3, sends a reference through SQS, and retrieves the payload for the consumer."
+      },
+      {
+        "id": "c",
+        "text": "Split each scan result into chunks that fit in a message and reassemble the chunks in the processing service.",
+        "note": "Chunking requires custom code to track and reorder parts, and a standard queue can deliver chunks out of order or more than once."
+      },
+      {
+        "id": "d",
+        "text": "Mount an Amazon EFS file system on both applications. Write each scan result to the file system and send the file path in the message.",
+        "note": "This works, but the company must write the file handling and cleanup code and manage mounts on both applications. A ready-made library achieves the same result with less effort."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "For payloads larger than the SQS message size limit, store the payload in S3 and pass a pointer through the queue (the claim-check pattern). The SQS Extended Client Library does this automatically. Remember: queues carry references, object storage carries large data."
+  },
+  {
+    "id": "resilient-2.1-43",
+    "domain": "resilient",
+    "services": [
+      "Amazon EventBridge Scheduler",
+      "Amazon ECS",
+      "AWS Fargate",
+      "AWS Lambda"
+    ],
+    "text": "A company runs a nightly data-reconciliation job as an AWS Lambda function. The data volume has grown, and the job now needs up to 45 minutes, so the function times out. The job cannot be split into smaller parts. The code is already packaged as a container image.\n\nThe company wants the job to start at 01:00 each night, to retry automatically if it fails to start, and to run without any servers to manage.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an EventBridge Scheduler schedule with a retry policy that runs the image as an Amazon ECS task on AWS Fargate at 01:00.",
+        "note": "ECS tasks on Fargate have no 15-minute limit and need no servers. EventBridge Scheduler can run ECS tasks directly and retries the target if the call fails."
+      },
+      {
+        "id": "b",
+        "text": "Increase the timeout of the Lambda function to 60 minutes and keep the existing schedule.",
+        "note": "The maximum Lambda timeout is 15 minutes, so a 45-minute job cannot complete in one invocation."
+      },
+      {
+        "id": "c",
+        "text": "Create an AWS Step Functions Express workflow that invokes the Lambda function repeatedly until the job completes.",
+        "note": "Express workflows run for at most 5 minutes, and the job cannot be split into parts that separate invocations could run."
+      },
+      {
+        "id": "d",
+        "text": "Run the container on an Amazon EC2 instance in an Amazon ECS cluster and start the job with a cron entry on the instance.",
+        "note": "This removes the time limit, but the company must manage the EC2 instance, and cron has no automatic retry if the job fails to start."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "When a task exceeds Lambda's 15-minute maximum, run it as a container on Fargate, triggered by EventBridge Scheduler or Step Functions. Remember: Lambda for short event-driven work; Fargate tasks for long jobs without servers."
+  },
+  {
+    "id": "resilient-2.1-44",
+    "domain": "resilient",
+    "services": [
+      "Amazon ECS",
+      "AWS Fargate",
+      "AWS Cloud Map"
+    ],
+    "text": "A company runs 20 microservices on Amazon ECS with AWS Fargate. Each service calls other services through a dedicated internal Application Load Balancer, and the company pays for 20 load balancers. The company wants services to find each other by name, with load balancing, retries, and traffic metrics between services. The company does not want to deploy or manage its own service mesh software.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create records for each task in an Amazon Route 53 private hosted zone and update the records when tasks start and stop.",
+        "note": "Fargate task IP addresses change frequently, so the records would need constant updates. DNS records also do not provide retries or traffic metrics."
+      },
+      {
+        "id": "b",
+        "text": "Configure Amazon ECS Service Connect with an AWS Cloud Map namespace, and remove the internal load balancers.",
+        "note": "Service Connect registers services in Cloud Map and adds a managed proxy to each task. Services call each other by name with load balancing, retries, and traffic metrics, without separate load balancers."
+      },
+      {
+        "id": "c",
+        "text": "Deploy a self-managed service mesh with Envoy sidecar containers and a HashiCorp Consul cluster on Amazon EC2 instances.",
+        "note": "This provides discovery, retries, and metrics, but the company must deploy and operate the mesh software and the EC2 instances."
+      },
+      {
+        "id": "d",
+        "text": "Replace each internal Application Load Balancer with an internal Network Load Balancer.",
+        "note": "Network Load Balancers can cost less, but the company still runs 20 load balancers. They do not provide name-based discovery, retries, or request-level metrics between services."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "ECS Service Connect provides managed service discovery (through Cloud Map), client-side load balancing, retries, and metrics for service-to-service calls without internal load balancers or a self-managed mesh. Remember: use Cloud Map or Service Connect for discovery between ECS services."
+  },
+  {
+    "id": "resilient-2.1-45",
+    "domain": "resilient",
+    "services": [
+      "Amazon SNS",
+      "Amazon SQS",
+      "Amazon EventBridge"
+    ],
+    "text": "A trading platform publishes price updates for thousands of financial instruments. Three downstream systems must each receive every update. For each instrument, updates must reach each system in the order they were published and without duplicates. Updates for different instruments can be processed in parallel.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Publish updates to an Amazon SNS standard topic. Subscribe an Amazon SQS queue for each system.",
+        "note": "SNS standard topics deliver every message to each subscriber but provide best-effort ordering and at-least-once delivery, so updates can arrive out of order or more than once."
+      },
+      {
+        "id": "b",
+        "text": "Publish updates to one Amazon SQS FIFO queue with the instrument ID as the message group ID. Have all three systems poll the queue.",
+        "note": "The FIFO queue preserves order per instrument, but the three systems compete for messages. Each update reaches only one system."
+      },
+      {
+        "id": "c",
+        "text": "Publish updates to an Amazon EventBridge custom event bus. Create a rule for each system that targets an SQS FIFO queue.",
+        "note": "EventBridge does not guarantee the order in which events are delivered to targets, so per-instrument ordering cannot be ensured."
+      },
+      {
+        "id": "d",
+        "text": "Publish updates to an Amazon SNS FIFO topic with the instrument ID as the message group ID. Subscribe an SQS FIFO queue per system.",
+        "note": "SNS FIFO topics preserve order within each message group and deduplicate messages, then fan out to SQS FIFO queues. Each system receives every update in order per instrument, and different instruments can be processed in parallel."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Ordered, deduplicated fan-out requires SNS FIFO topics delivering to SQS FIFO queues, with the message group ID set to the ordering key. Remember: SNS standard and EventBridge provide no ordering guarantee; a single queue cannot deliver each message to every consumer."
+  },
+  {
+    "id": "resilient-2.1-46",
+    "domain": "resilient",
+    "services": [
+      "AWS Step Functions",
+      "AWS Lambda",
+      "Amazon SNS"
+    ],
+    "text": "A bank uses an AWS Step Functions workflow to process loan applications. After automated checks finish, a human underwriter must approve or reject the application in an internal web application. The underwriter can take up to 5 days to respond. The workflow must pause until the decision arrives, must not pay for compute while it waits, and must continue as soon as the underwriter responds.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add a loop to the workflow that uses a Wait state of 10 minutes and then invokes a Lambda function that checks a database for the underwriter's decision.",
+        "note": "Polling works but adds up to 10 minutes of delay after the decision, invokes a function hundreds of times for each application, and requires custom polling code."
+      },
+      {
+        "id": "b",
+        "text": "Convert the workflow to a Step Functions Express workflow with a Wait state that pauses until the underwriter responds.",
+        "note": "Express workflows run for at most 5 minutes, so they cannot wait up to 5 days for a decision."
+      },
+      {
+        "id": "c",
+        "text": "Use a .waitForTaskToken Task state that sends the task token through Amazon SNS. Have the web application return the token with the decision.",
+        "note": "The callback pattern pauses a Standard workflow for up to one year without running compute. The workflow resumes as soon as the web application calls SendTaskSuccess or SendTaskFailure with the token."
+      },
+      {
+        "id": "d",
+        "text": "Invoke a Lambda function that waits in a loop until the underwriter's decision is written to a database, and then returns the decision to the workflow.",
+        "note": "Lambda functions run for at most 15 minutes and are billed while they wait, so a function cannot wait up to 5 days for a decision."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "The Step Functions callback pattern (.waitForTaskToken) pauses a Standard workflow until an external system or person returns the task token. Use it for human approvals and long external steps. Remember: Standard workflows run up to one year; Express workflows up to 5 minutes."
+  }
+]

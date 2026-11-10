@@ -1,0 +1,610 @@
+[
+  {
+    "id": "cost-4.3-01",
+    "domain": "cost",
+    "services": [
+      "Aurora",
+      "Aurora Serverless v2",
+      "RDS"
+    ],
+    "text": "A company is launching a new booking application that uses a MySQL-compatible relational database. Traffic is unpredictable: the database is mostly idle at night and on weekends, but marketing campaigns can increase load tenfold within minutes. The company cannot predict when campaigns will run.\n\nThe company wants to avoid paying for peak database capacity during idle periods and does not want to resize instances manually.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Deploy an Amazon Aurora MySQL provisioned cluster sized for peak load. Purchase reserved DB instances for the cluster.",
+        "note": "Reserved DB instances lower the hourly rate, but a cluster sized for a tenfold peak is paid for 24/7. Most of that capacity would sit idle at night and on weekends."
+      },
+      {
+        "id": "b",
+        "text": "Deploy an Amazon Aurora Serverless v2 cluster with a low minimum capacity and a maximum capacity that covers the campaign peak.",
+        "note": "Aurora Serverless v2 adjusts capacity in fine-grained increments within seconds and bills for the capacity used. It scales down during idle periods and up during unpredictable campaigns without manual resizing."
+      },
+      {
+        "id": "c",
+        "text": "Deploy Amazon RDS for MySQL on a large instance. Use a scheduled AWS Lambda function to change the instance class at night and on weekends.",
+        "note": "Scheduled resizing handles only the predictable idle periods and causes downtime during each modification. It cannot react to campaigns that start at unknown times."
+      },
+      {
+        "id": "d",
+        "text": "Deploy an Amazon Aurora MySQL provisioned cluster with Aurora Auto Scaling for Aurora Replicas.",
+        "note": "Aurora Auto Scaling adds and removes read replicas, which helps only read traffic. The writer instance must still be sized for peak write load and runs all the time."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Aurora Serverless v2 fits unpredictable, spiky relational workloads with idle periods because capacity follows demand automatically. Provisioned clusters, even with reservations or replica auto scaling, pay for a writer sized for the peak. Use provisioned capacity with reservations when load is steady and predictable."
+  },
+  {
+    "id": "cost-4.3-02",
+    "domain": "cost",
+    "services": [
+      "RDS",
+      "Reserved DB Instances",
+      "Database Savings Plans"
+    ],
+    "text": "A company runs its order management system on an Amazon RDS for PostgreSQL Multi-AZ DB instance (db.r6g.2xlarge). The database has had steady utilization of about 70% for 2 years and must stay available 24/7. The company expects to keep this database, at this size, for at least 3 more years.\n\nWhich solution will reduce the database costs the MOST?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Purchase a 1-year Database Savings Plan with an hourly commitment that covers the full cost of the DB instance.",
+        "note": "Database Savings Plans cover RDS, but they have only a 1-year term, apply to the latest provisioned instance generations, and give a smaller discount than a 3-year reservation. They suit workloads that might change engine or instance family."
+      },
+      {
+        "id": "b",
+        "text": "Migrate the database to Amazon Aurora Serverless v2.",
+        "note": "Aurora Serverless v2 is designed for variable or unpredictable load. For a steady, always-on workload, provisioned capacity with a reservation is cheaper per hour than paying for the same capacity in ACUs."
+      },
+      {
+        "id": "c",
+        "text": "Stop the DB instance every night and start it every morning by using a schedule.",
+        "note": "The order management system must be available 24/7, so stopping the database at night breaks a stated requirement."
+      },
+      {
+        "id": "d",
+        "text": "Purchase a 3-year reserved DB instance for db.r6g.2xlarge PostgreSQL with the Multi-AZ option.",
+        "note": "Reserved DB instances give a large discount for a 1-year or 3-year commitment on steady RDS usage. Matching the engine, class, and Multi-AZ option means the reservation applies to the full running cost of the instance."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Steady, long-lived RDS workloads that will not change instance family get the deepest discount from reserved DB instances. Database Savings Plans trade some discount for flexibility across engines, families, and Regions, and they have only a 1-year term. Remember that the reservation must match the Multi-AZ option to cover both the primary and the standby."
+  },
+  {
+    "id": "cost-4.3-03",
+    "domain": "cost",
+    "services": [
+      "DynamoDB"
+    ],
+    "text": "A company has an Amazon DynamoDB table that uses on-demand capacity mode. The application has run for 18 months, and traffic follows a smooth, predictable daily curve: about 2,000 writes per second during business hours and about 300 writes per second overnight. Traffic never spikes suddenly.\n\nThe company wants to reduce the cost of the table without risking throttling.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Switch the table to provisioned capacity mode and configure DynamoDB auto scaling with a target utilization of 70%.",
+        "note": "Provisioned capacity costs less per request than on-demand when utilization is steady and predictable. Auto scaling follows the gradual daily curve, and the 70% target leaves headroom to avoid throttling."
+      },
+      {
+        "id": "b",
+        "text": "Switch the table to provisioned capacity mode with a fixed capacity of 2,000 write capacity units.",
+        "note": "A fixed capacity sized for the daytime peak would be paid for overnight, when traffic is about 15% of the peak. Auto scaling would remove most of that waste."
+      },
+      {
+        "id": "c",
+        "text": "Keep on-demand capacity mode and change the table class to DynamoDB Standard-Infrequent Access.",
+        "note": "The Standard-IA table class lowers storage cost but raises the cost of reads and writes. For a write-heavy table, this would increase cost."
+      },
+      {
+        "id": "d",
+        "text": "Keep on-demand capacity mode and add a DynamoDB Accelerator (DAX) cluster in front of the table.",
+        "note": "DAX caches reads. It does not reduce the cost of writes, which are the bulk of this workload, and it adds the cost of the cluster nodes."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "On-demand mode is best for unknown or spiky traffic; once traffic is predictable, provisioned mode with auto scaling is cheaper. Auto scaling follows gradual changes well, which removes the need to size for peak. The table class decision is a separate lever that depends on whether storage or throughput dominates cost."
+  },
+  {
+    "id": "cost-4.3-04",
+    "domain": "cost",
+    "services": [
+      "DynamoDB"
+    ],
+    "text": "A startup is launching a mobile game. The backend stores player state in Amazon DynamoDB. The company has no traffic history. It expects long idle periods with near-zero traffic, interrupted by sudden spikes to about 3,000 requests per second within seconds when a streamer promotes the game.\n\nThe company wants to pay as little as possible during idle periods and must not throttle players during spikes.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create the table in provisioned capacity mode with 3,000 read and 3,000 write capacity units.",
+        "note": "This capacity handles the spikes, but it is paid for every hour, including the long idle periods. It does not minimize idle cost."
+      },
+      {
+        "id": "b",
+        "text": "Create the table in provisioned capacity mode with low base capacity and DynamoDB auto scaling.",
+        "note": "DynamoDB auto scaling reacts to CloudWatch metrics over several minutes. A jump to 3,000 requests per second within seconds would be throttled before auto scaling adds capacity."
+      },
+      {
+        "id": "c",
+        "text": "Create the table in on-demand capacity mode.",
+        "note": "On-demand mode bills per request, so idle periods cost almost nothing except storage. It accommodates sudden traffic increases without capacity planning, which fits unknown and spiky traffic."
+      },
+      {
+        "id": "d",
+        "text": "Store player state in Amazon Aurora Serverless v2 with a high maximum capacity.",
+        "note": "Aurora Serverless v2 scales with load, but it is a relational database that requires a data model change from key-value player state and keeps a minimum capacity when it is not paused. It is a larger change than needed for a simple key-value workload."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "On-demand capacity mode is the answer for new tables with unknown traffic or sudden spikes. Auto scaling works for gradual changes but lags behind instant spikes. Once traffic becomes predictable, revisit provisioned mode to cut cost. For spikes far beyond a new table's initial on-demand throughput, pre-warm the table with warm throughput."
+  },
+  {
+    "id": "cost-4.3-05",
+    "domain": "cost",
+    "services": [
+      "DynamoDB",
+      "S3"
+    ],
+    "text": "A company stores 40 TB of order history in an Amazon DynamoDB table. Storage is now more than 70% of the table's cost. Orders older than 30 days are read rarely, but customer service agents must still be able to look up any order in the application with single-digit millisecond latency. All orders must be retained for 7 years.\n\nWhich solution will reduce costs MOST while meeting these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Enable Time to Live (TTL) on the table so that orders older than 30 days are deleted automatically.",
+        "note": "TTL deletes expired items at no throughput cost, but the company must retain all orders for 7 years and look them up in the application. Deleting them breaks both requirements."
+      },
+      {
+        "id": "b",
+        "text": "Export orders older than 30 days to Amazon S3 Glacier Flexible Retrieval and delete them from the table.",
+        "note": "Glacier storage is very cheap, but retrieval takes minutes to hours. Agents could no longer look up old orders with single-digit millisecond latency."
+      },
+      {
+        "id": "c",
+        "text": "Switch the table from provisioned capacity mode to on-demand capacity mode.",
+        "note": "Capacity mode changes how throughput is billed. It does not affect storage cost, which is the dominant cost of this table."
+      },
+      {
+        "id": "d",
+        "text": "Change the table class to DynamoDB Standard-Infrequent Access (Standard-IA).",
+        "note": "The Standard-IA table class lowers storage cost substantially in exchange for higher per-request cost. It suits tables where storage dominates cost, and it keeps the same latency and API."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "The DynamoDB Standard-IA table class targets tables whose cost is dominated by storage, while keeping single-digit millisecond access. TTL and archiving to S3 Glacier lower cost but break retention or latency requirements. Choose the table class by asking whether storage or throughput dominates the bill."
+  },
+  {
+    "id": "cost-4.3-06",
+    "domain": "cost",
+    "services": [
+      "DynamoDB",
+      "Lambda",
+      "EventBridge"
+    ],
+    "text": "A company stores user session records in an Amazon DynamoDB table that uses provisioned capacity. Each session is useless 24 hours after it is created. Today a scheduled AWS Lambda function scans the table every hour and deletes expired sessions. The scans and deletes consume a large share of the table's provisioned capacity, and the company has had to raise capacity to avoid throttling.\n\nWhich solution will reduce costs the MOST?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Run the Lambda function once each day instead of every hour.",
+        "note": "Fewer runs reduce the number of scans, but each daily scan and delete still consumes read and write capacity. Expired sessions would also stay in the table for up to a day longer."
+      },
+      {
+        "id": "b",
+        "text": "Add an expiration timestamp attribute to each item. Enable Time to Live (TTL) on that attribute and remove the Lambda function.",
+        "note": "DynamoDB TTL deletes expired items automatically in the background without consuming write capacity. Removing the scanning function also frees the read capacity it used."
+      },
+      {
+        "id": "c",
+        "text": "Change the table class to DynamoDB Standard-Infrequent Access.",
+        "note": "Standard-IA lowers storage cost but raises per-request cost. Session tables are read and written often, and the scans and deletes would still run."
+      },
+      {
+        "id": "d",
+        "text": "Create a global secondary index on the creation timestamp and change the Lambda function to query the index instead of scanning.",
+        "note": "Querying an index reduces the read cost of finding expired items, but the GSI adds its own storage and write costs, and every delete still consumes write capacity."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "TTL is the built-in way to expire items in DynamoDB, and its deletes do not consume write capacity. Custom scan-and-delete jobs pay for both reads and writes. Note that TTL deletion is not instantaneous; applications that must hide expired items immediately should filter on the timestamp."
+  },
+  {
+    "id": "cost-4.3-07",
+    "domain": "cost",
+    "services": [
+      "ElastiCache",
+      "RDS"
+    ],
+    "text": "A news website uses an Amazon RDS for MySQL primary instance and four large read replicas. About 90% of the queries are reads, and the same few thousand article queries are repeated millions of times each day. Article content may be up to 5 minutes stale. Read traffic is growing, and the company is about to add more replicas.\n\nWhich solution will reduce database costs MOST while handling the growth?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add an Amazon ElastiCache cluster as a lazy loading cache with a 5-minute TTL, and remove some read replicas.",
+        "note": "A cache serves the repeated article queries from memory, so most reads never reach the database. The 5-minute TTL matches the allowed staleness, and fewer replicas are needed."
+      },
+      {
+        "id": "b",
+        "text": "Add four more read replicas of the same instance class, and spread reads across all replicas with Route 53 weighted records.",
+        "note": "More replicas handle the growth but add the full cost of each DB instance. Each replica re-executes the same repeated queries."
+      },
+      {
+        "id": "c",
+        "text": "Migrate the database to Amazon Aurora MySQL, and use Aurora Auto Scaling to add Aurora Replicas as read load grows.",
+        "note": "Aurora replicas scale more easily, but each replica is still a full DB instance that re-executes identical queries. The cost per read stays high."
+      },
+      {
+        "id": "d",
+        "text": "Scale the primary instance and the read replicas up to the next larger memory-optimized instance class.",
+        "note": "Larger instances handle more reads, but the cost scales with instance size. This does nothing to avoid repeating the same queries."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "When reads are repetitive and some staleness is allowed, an in-memory cache is far cheaper per read than additional database instances. Read replicas scale reads but at the full cost of a DB instance. The allowed staleness is the clue that makes caching acceptable."
+  },
+  {
+    "id": "cost-4.3-08",
+    "domain": "cost",
+    "services": [
+      "DynamoDB",
+      "DynamoDB Accelerator (DAX)",
+      "ElastiCache"
+    ],
+    "text": "An ecommerce company stores its product catalog in Amazon DynamoDB with provisioned capacity. Reads are 95% of the traffic, and a small set of popular products is read repeatedly. The table now needs 80,000 read capacity units at peak. Eventually consistent reads are acceptable. The development team wants to make as few code changes as possible.\n\nWhich solution will reduce read costs while meeting these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Increase the provisioned read capacity and enable DynamoDB auto scaling.",
+        "note": "Auto scaling matches capacity to demand, but every repeated read of a popular product still consumes read capacity. It does not reduce the number of reads that reach the table."
+      },
+      {
+        "id": "b",
+        "text": "Deploy an Amazon ElastiCache (Redis OSS) cluster. Change the application to check the cache before reading from DynamoDB and to populate the cache on a miss.",
+        "note": "ElastiCache can absorb repeated reads, but the team must write and maintain cache-aside logic for every read path. This requires more code changes than an API-compatible cache."
+      },
+      {
+        "id": "c",
+        "text": "Deploy a DynamoDB Accelerator (DAX) cluster. Point the application's DynamoDB client at the DAX cluster endpoint.",
+        "note": "DAX is an in-memory cache that is API-compatible with DynamoDB, so the application changes only its client configuration. Repeated eventually consistent reads are served from the cache instead of consuming table read capacity."
+      },
+      {
+        "id": "d",
+        "text": "Create a global secondary index that projects the popular product attributes, and read from the index.",
+        "note": "A global secondary index has its own provisioned capacity and storage. Reading from it moves the cost rather than reducing it."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "DAX and ElastiCache both reduce read cost through caching, but DAX is a drop-in, API-compatible cache for DynamoDB. The phrase 'as few code changes as possible' separates them. DAX helps only with eventually consistent reads; strongly consistent reads pass through to the table."
+  },
+  {
+    "id": "cost-4.3-09",
+    "domain": "cost",
+    "services": [
+      "RDS",
+      "EventBridge Scheduler"
+    ],
+    "text": "A development team uses an Amazon RDS for PostgreSQL DB instance only from 7:00 AM to 7:00 PM on weekdays. The instance runs 24/7 today. The team wants to stop paying for DB instance hours outside working hours. The database endpoint and data must remain the same every morning, and the team wants no manual steps.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Take a manual snapshot every evening and delete the DB instance. Restore the snapshot to a new DB instance every morning by using a script.",
+        "note": "Restoring from a snapshot creates a new instance, takes time each morning, and requires a script to manage snapshots and instance settings. It works but adds far more operational effort than stopping the instance."
+      },
+      {
+        "id": "b",
+        "text": "Purchase a 1-year reserved DB instance for the DB instance.",
+        "note": "A reservation lowers the hourly rate but is billed for every hour of the term. The team uses the database for about 60 of 168 hours each week."
+      },
+      {
+        "id": "c",
+        "text": "Change the DB instance to a burstable db.t4g instance class that runs 24/7.",
+        "note": "A smaller burstable class lowers the hourly rate, but the instance is still billed outside working hours. Stopping the instance saves more."
+      },
+      {
+        "id": "d",
+        "text": "Create Amazon EventBridge Scheduler schedules that call the RDS StopDBInstance API at 7:00 PM and the StartDBInstance API at 7:00 AM on weekdays.",
+        "note": "A stopped RDS instance is not billed for instance hours; only storage and backups are charged. The endpoint and data stay the same, and EventBridge Scheduler can call the RDS APIs directly without custom code."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Stopping a non-production RDS instance outside working hours removes instance-hour charges while keeping its endpoint and storage. A schedule that calls the RDS stop and start APIs automates this. Snapshot-and-delete saves similar money but costs more effort; it suits databases that sit idle for much longer than 7 days."
+  },
+  {
+    "id": "cost-4.3-10",
+    "domain": "cost",
+    "services": [
+      "RDS",
+      "RDS snapshots"
+    ],
+    "text": "A finance department uses an Amazon RDS for MySQL DB instance (db.r6i.4xlarge with 2 TB of storage) only during the first week of each quarter to produce regulatory reports. For the rest of the quarter, nobody connects to the database. The data must be preserved between reporting periods, and the department can wait up to 2 hours for the database to become available before each reporting week.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "After each reporting week, take a final snapshot and delete the DB instance. Restore the DB instance from the snapshot before the next reporting week.",
+        "note": "Between reporting periods, the company pays only for snapshot storage, with no instance or provisioned storage charges. A restore of 2 TB fits within the 2-hour window that the department allows."
+      },
+      {
+        "id": "b",
+        "text": "Stop the DB instance after each reporting week and start it before the next reporting week.",
+        "note": "A stopped RDS instance is started again automatically after 7 days. Without repeated intervention, the instance would run and be billed for most of the quarter. Provisioned storage is also billed while the instance is stopped."
+      },
+      {
+        "id": "c",
+        "text": "Purchase a 1-year reserved DB instance for the db.r6i.4xlarge instance.",
+        "note": "A reservation is billed for every hour of the year, but the database is used for about 4 weeks per year. Removing the instance between periods saves much more."
+      },
+      {
+        "id": "d",
+        "text": "Change the DB instance to a db.t4g.large instance class between reporting weeks and scale it back up before each reporting week.",
+        "note": "A smaller class lowers the hourly cost, but the instance and its 2 TB of provisioned storage are still billed for the whole quarter."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "RDS instances can be stopped for at most 7 days before AWS starts them again, so stopping is a poor fit for databases that sit idle for months. Snapshot-and-delete reduces the idle cost to snapshot storage. Use stop and start for short idle periods such as nights and weekends."
+  },
+  {
+    "id": "cost-4.3-11",
+    "domain": "cost",
+    "services": [
+      "DMS",
+      "AWS SCT",
+      "Aurora PostgreSQL"
+    ],
+    "text": "A company runs a 3 TB Oracle Database on premises and pays high license and support fees. The company wants to move to Amazon Aurora PostgreSQL-Compatible Edition to eliminate commercial database licensing. The database contains hundreds of PL/SQL stored procedures and triggers. The cutover downtime must be less than 15 minutes.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Migrate the database to Amazon RDS for Oracle with the bring-your-own-license model.",
+        "note": "RDS for Oracle reduces operational work, but the company would still pay for Oracle licenses. This breaks the requirement to eliminate commercial licensing."
+      },
+      {
+        "id": "b",
+        "text": "Use the AWS Schema Conversion Tool (AWS SCT) to convert the schema, stored procedures, and triggers to PostgreSQL, and fix any items that it flags for manual conversion.",
+        "note": "AWS SCT converts schema objects and procedural code from Oracle to PostgreSQL and reports code that needs manual work. A heterogeneous migration needs this conversion step before data is moved."
+      },
+      {
+        "id": "c",
+        "text": "Export the database with Oracle Data Pump to Amazon S3 and import the dump file into Aurora PostgreSQL.",
+        "note": "Data Pump files are an Oracle-specific format that PostgreSQL cannot import. This approach also requires downtime for the whole export and import."
+      },
+      {
+        "id": "d",
+        "text": "Use AWS Snowball Edge to ship a full backup of the database to AWS and restore it into Aurora PostgreSQL.",
+        "note": "An Oracle backup cannot be restored into PostgreSQL, and shipping a device takes days. Changes made during transit would be lost, which breaks the 15-minute downtime limit."
+      },
+      {
+        "id": "e",
+        "text": "Use AWS Database Migration Service (AWS DMS) with a full load and ongoing change data capture (CDC) to replicate the data to Aurora PostgreSQL until cutover.",
+        "note": "AWS DMS copies the existing data and then keeps the target in sync through CDC while the source stays online. Cutover needs only a short pause to let replication catch up."
+      }
+    ],
+    "correct": [
+      "b",
+      "e"
+    ],
+    "explanation": "A heterogeneous migration to remove commercial licensing pairs schema conversion (AWS SCT or DMS Schema Conversion) with AWS DMS data replication. DMS moves data but does not convert procedural code, and full load plus CDC keeps downtime to minutes. Staying on Oracle in any form keeps the license cost."
+  },
+  {
+    "id": "cost-4.3-12",
+    "domain": "cost",
+    "services": [
+      "Aurora PostgreSQL",
+      "Babelfish",
+      "RDS for SQL Server"
+    ],
+    "text": "A company runs a line-of-business application on Amazon RDS for SQL Server Enterprise Edition with license-included pricing. SQL Server license fees are the largest part of the database bill. The application's data access layer uses SQL Server client drivers and calls hundreds of T-SQL stored procedures.\n\nThe company wants to stop paying for SQL Server licenses. The development team can change connection strings, but it has no budget to rewrite the data access layer or replace the drivers.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Migrate the database to Amazon RDS for PostgreSQL with Babelfish turned on, and point the connection strings at port 1433.",
+        "note": "Babelfish is a capability of Aurora PostgreSQL-Compatible Edition. Amazon RDS for PostgreSQL does not offer Babelfish, so it cannot accept SQL Server client connections or run T-SQL."
+      },
+      {
+        "id": "b",
+        "text": "Move to Amazon RDS for SQL Server Standard Edition with license-included pricing, and stop using Enterprise-only features.",
+        "note": "Standard Edition is cheaper than Enterprise Edition, but license-included pricing still charges for SQL Server licenses. This lowers the license cost but does not remove it."
+      },
+      {
+        "id": "c",
+        "text": "Migrate the database to Amazon Aurora PostgreSQL with Babelfish turned on, and point the connection strings at its T-SQL port.",
+        "note": "Babelfish for Aurora PostgreSQL accepts connections from SQL Server clients over the TDS protocol on port 1433 and runs most T-SQL. The application keeps its drivers and most of its code, and Aurora PostgreSQL has no commercial license fee."
+      },
+      {
+        "id": "d",
+        "text": "Migrate the database to Amazon Aurora PostgreSQL. Use AWS SCT to convert the T-SQL procedures to PL/pgSQL, and use AWS DMS to move the data.",
+        "note": "This removes the license cost, but the application would have to switch to PostgreSQL drivers and call converted procedures. That is the data access layer rewrite the team cannot afford."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Babelfish lets Aurora PostgreSQL understand the SQL Server TDS wire protocol and T-SQL, so applications can leave SQL Server licensing with few code changes and no driver change. Babelfish is available only on Aurora PostgreSQL, not on RDS for PostgreSQL. A conventional SCT and DMS migration also removes licensing but requires application changes. Some T-SQL features are unsupported, so run a compatibility assessment first."
+  },
+  {
+    "id": "cost-4.3-13",
+    "domain": "cost",
+    "services": [
+      "Redshift"
+    ],
+    "text": "A company has an Amazon Redshift provisioned RA3 cluster that analysts use only from 8:00 AM to 6:00 PM on weekdays. No queries or loads run outside those hours. The cluster runs 24/7 today. The company wants to reduce costs while keeping the existing cluster, its endpoint, and its configuration.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Purchase reserved nodes for the cluster with a 1-year term.",
+        "note": "Reserved nodes lower the hourly rate but are billed for every hour of the term. The cluster is used for about 50 of 168 hours each week."
+      },
+      {
+        "id": "b",
+        "text": "Create a Redshift schedule that pauses the cluster at 6:00 PM and resumes it at 8:00 AM on weekdays.",
+        "note": "A paused Redshift cluster is billed only for storage, not for compute. Scheduled pause and resume are built into Redshift and keep the same cluster and endpoint."
+      },
+      {
+        "id": "c",
+        "text": "Take a snapshot and delete the cluster every evening. Restore the cluster from the snapshot every morning by using an AWS Lambda function.",
+        "note": "Deleting and restoring removes compute cost but requires custom automation and restore time each morning. Pause and resume give the same savings with a built-in feature."
+      },
+      {
+        "id": "d",
+        "text": "Schedule an elastic resize to the smallest node count every evening and back to the full size every morning.",
+        "note": "A resized cluster still bills compute for the remaining nodes overnight, and twice-daily resizes add operational risk. Pausing stops compute billing completely."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Redshift provisioned clusters can be paused and resumed on a schedule, and compute billing stops while they are paused. Reserved nodes suit always-on clusters, not part-time ones. Delete-and-restore saves similar money with far more effort."
+  },
+  {
+    "id": "cost-4.3-14",
+    "domain": "cost",
+    "services": [
+      "Redshift",
+      "Redshift Serverless"
+    ],
+    "text": "A company runs an Amazon Redshift provisioned cluster of four ra3.4xlarge nodes 24/7. A nightly ETL job runs for about 1 hour. During the day, a few analysts run ad hoc queries at unpredictable times. In total, the cluster runs queries for less than 3 hours each day.\n\nQuery performance must stay about the same. The company does not want to manage cluster sizes or schedules, and it will not make a long-term commitment because it will review its analytics platform next year.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a Redshift schedule that pauses the cluster after the nightly ETL job and resumes it at 8:00 AM on weekdays.",
+        "note": "A paused cluster stops compute billing, but it cannot run the ad hoc queries that arrive at unpredictable times, and the company does not want to manage schedules."
+      },
+      {
+        "id": "b",
+        "text": "Use elastic resize to reduce the cluster to two ra3.4xlarge nodes, and keep the cluster running 24/7.",
+        "note": "Halving the nodes halves the hourly cost, but the cluster is still billed for 24 hours to serve less than 3 hours of queries, and queries would slow down."
+      },
+      {
+        "id": "c",
+        "text": "Resize the cluster to two ra3.xlplus nodes, and turn on concurrency scaling to add capacity when queries start to queue.",
+        "note": "Concurrency scaling adds capacity only when queries queue, which this light workload rarely does. Smaller nodes slow down each query, and the main cluster is still billed 24/7."
+      },
+      {
+        "id": "d",
+        "text": "Migrate the data warehouse to Amazon Redshift Serverless with a base capacity sized for the current query performance.",
+        "note": "Redshift Serverless bills RPU capacity per second only while queries run, with a 60-second minimum, and it scales automatically. Idle time costs nothing for compute, and no commitment is needed."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Redshift Serverless suits intermittent, unpredictable workloads because compute is billed only while queries run and capacity is managed automatically. Pause and resume schedules fit predictable idle windows, and resizing or concurrency scaling still pays for an always-on cluster. For steady, around-the-clock workloads, provisioned clusters with reserved nodes are usually cheaper."
+  },
+  {
+    "id": "cost-4.3-15",
+    "domain": "cost",
+    "services": [
+      "DynamoDB"
+    ],
+    "text": "A company has an Amazon DynamoDB table that stores device telemetry. The table uses on-demand capacity mode. For the past year, traffic has been steady 24/7 at about 5,000 writes per second and 3,000 reads per second, and it will continue for at least 3 years. Telemetry items are not needed after 90 days, but they remain in the table today. Items written in the past 90 days are read frequently.\n\nWhich combination of actions will reduce costs the MOST? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Switch the table to provisioned capacity mode with auto scaling, and purchase DynamoDB reserved capacity for the steady baseline.",
+        "note": "Steady, predictable throughput is cheaper in provisioned mode than on demand, and reserved capacity adds a further discount for a long-term baseline."
+      },
+      {
+        "id": "b",
+        "text": "Change the table class to DynamoDB Standard-Infrequent Access.",
+        "note": "Standard-IA lowers the storage price but raises read and write prices by about 25%, and DynamoDB reserved capacity is not available for the Standard-IA table class. For this throughput-heavy table, provisioned capacity with reserved capacity saves more."
+      },
+      {
+        "id": "c",
+        "text": "Add a DynamoDB Accelerator (DAX) cluster in front of the table.",
+        "note": "DAX caches repeated reads. Telemetry is mostly writes and fresh reads, so DAX would add node cost without reducing the bulk of the throughput cost."
+      },
+      {
+        "id": "d",
+        "text": "Add an expiration attribute to each item and enable Time to Live (TTL) to delete items 90 days after they are written.",
+        "note": "TTL removes items that are no longer needed without consuming write capacity. This stops paying to store a growing backlog of old telemetry."
+      },
+      {
+        "id": "e",
+        "text": "Convert the table to a global table with a replica in a second AWS Region.",
+        "note": "A global table replicates every write to another Region, which roughly doubles write and storage costs. Nothing in the scenario requires multi-Region access."
+      }
+    ],
+    "correct": [
+      "a",
+      "d"
+    ],
+    "explanation": "Two independent levers apply: match the capacity mode to the traffic pattern, and stop storing data that is no longer needed. Steady traffic favors provisioned capacity with reserved capacity, and TTL removes expired items without consuming write capacity. Standard-IA is the near miss: it raises throughput prices and cannot be combined with reserved capacity."
+  },
+  {
+    "id": "cost-4.3-16",
+    "domain": "cost",
+    "services": [
+      "Aurora"
+    ],
+    "text": "A company runs an Amazon Aurora PostgreSQL cluster for a high-volume transaction processing application. A review of the bill shows that I/O charges are about 45% of the total Aurora cost for the cluster, and the workload pattern is stable. The company does not want to change the application or the instance sizes.\n\nWhich solution will reduce Aurora costs the MOST?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add Aurora Replicas and send read queries to the reader endpoint.",
+        "note": "Adding replicas adds instance cost. Aurora bills I/O at the cluster storage level, so moving reads to replicas does not remove the I/O charges."
+      },
+      {
+        "id": "b",
+        "text": "Migrate the database to Amazon RDS for PostgreSQL with Provisioned IOPS SSD (io2) storage.",
+        "note": "Provisioned IOPS storage has a predictable price, but the migration changes the engine platform and gives up Aurora features. It is a larger change than a configuration switch, and provisioned IOPS for a high-volume workload is costly."
+      },
+      {
+        "id": "c",
+        "text": "Change the cluster storage configuration to Aurora I/O-Optimized.",
+        "note": "Aurora I/O-Optimized removes per-request I/O charges in exchange for higher instance and storage prices. AWS recommends it when I/O is more than about 25% of Aurora spend, which this cluster exceeds."
+      },
+      {
+        "id": "d",
+        "text": "Purchase reserved DB instances for the cluster instances on the Aurora Standard configuration.",
+        "note": "Reserved DB instances discount instance hours, but they do not reduce I/O charges, which are almost half of the cost."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Aurora Standard bills per I/O request, while Aurora I/O-Optimized includes I/O in higher instance and storage prices. The rule of thumb is to switch when I/O exceeds about 25% of Aurora spend. Reserved instances can be combined with I/O-Optimized, but alone they do not touch I/O charges."
+  },
+  {
+    "id": "cost-4.3-17",
+    "domain": "cost",
+    "services": [
+      "Aurora",
+      "Aurora cloning"
+    ],
+    "text": "A company's QA team needs a fresh copy of a 5 TB production Amazon Aurora MySQL database every morning to run tests that modify a small fraction of the data. Today the team restores the previous night's snapshot to a new cluster, which takes hours and doubles storage cost. Each copy is deleted at the end of the day.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Aurora clone of the production cluster each morning, and delete the clone at the end of the day.",
+        "note": "Aurora cloning uses a copy-on-write protocol, so the clone shares the production storage and stores only pages that change. Clones are created quickly, and the small fraction of modified data keeps storage cost low."
+      },
+      {
+        "id": "b",
+        "text": "Add an Aurora Replica to the production cluster and give the QA team access to the replica.",
+        "note": "An Aurora Replica is read-only and shares the production cluster volume. The QA tests modify data, so they cannot run on a replica."
+      },
+      {
+        "id": "c",
+        "text": "Use AWS DMS to replicate the production database to a separate Aurora cluster for QA.",
+        "note": "A DMS target holds a full copy of the 5 TB data and needs a replication instance. The QA team's changes would also conflict with ongoing replication."
+      },
+      {
+        "id": "d",
+        "text": "Export the production database to Amazon S3 each night and load it into a new QA cluster each morning.",
+        "note": "Export and reload is slower than a snapshot restore and still creates a full copy of the data. It does not reduce time or storage cost."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Aurora cloning is the fast, cheap way to create writable copies for testing, because storage is shared until pages change. Snapshot restores and DMS copies duplicate all the data. A read replica is not writable."
+  }
+]

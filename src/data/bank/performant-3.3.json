@@ -1,0 +1,599 @@
+[
+  {
+    "id": "performant-3.3-01",
+    "domain": "performant",
+    "services": [
+      "Amazon RDS"
+    ],
+    "text": "A company runs an order management application on an Amazon RDS for MySQL Multi-AZ DB instance deployment. Business analysts run long reporting queries against the database every afternoon, and during that time order transactions slow down because of CPU contention. The reports can tolerate data that is a few seconds old. The company wants to isolate the reporting load from the transactional workload.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Point the reporting tool at the standby DB instance of the Multi-AZ deployment.",
+        "note": "In a Multi-AZ DB instance deployment, the standby exists only for failover and cannot serve read traffic. The reporting tool cannot connect to it."
+      },
+      {
+        "id": "b",
+        "text": "Create an RDS read replica of the DB instance, and point the reporting tool at the read replica endpoint.",
+        "note": "A read replica receives asynchronous updates from the primary and serves read-only queries on its own compute. Reports run on the replica without consuming CPU on the primary, and a few seconds of lag is acceptable."
+      },
+      {
+        "id": "c",
+        "text": "Modify the DB instance to a larger instance class with more vCPUs.",
+        "note": "A larger instance gives more headroom, but reports and transactions still compete on the same instance. This does not isolate the reporting load."
+      },
+      {
+        "id": "d",
+        "text": "Add an Amazon ElastiCache cluster in front of the database, and cache the results of the reporting queries.",
+        "note": "Caching helps for repeated identical queries. Long ad hoc reporting queries still have to run against the primary the first time, so the load is not isolated."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Offload read-only workloads such as reporting to RDS read replicas. Remember the close pair: a Multi-AZ DB instance standby is for availability and is not readable, whereas a read replica is for read scaling."
+  },
+  {
+    "id": "performant-3.3-02",
+    "domain": "performant",
+    "services": [
+      "Amazon Aurora"
+    ],
+    "text": "A company runs an Amazon Aurora MySQL DB cluster with one writer instance and two Aurora Replicas. The application sends all queries, including 85% that are read-only, to the cluster endpoint. Read traffic varies widely during the day, and during peaks the writer instance reaches 95% CPU utilisation while the replicas stay nearly idle. The company wants read capacity to follow demand automatically.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure the application to send read-only queries to the cluster's reader endpoint.",
+        "note": "The reader endpoint distributes connections across the available Aurora Replicas. Sending read-only queries there moves read load off the writer instance."
+      },
+      {
+        "id": "b",
+        "text": "Configure the application to send read-only queries to the instance endpoint of each existing Aurora Replica in turn.",
+        "note": "Instance endpoints connect to one specific instance. The application would have to track replicas itself and would not use replicas that are added or removed later."
+      },
+      {
+        "id": "c",
+        "text": "Add an Aurora Auto Scaling policy that adjusts the number of Aurora Replicas by target tracking on average replica CPU utilisation.",
+        "note": "Aurora Auto Scaling adds and removes Aurora Replicas as the chosen metric changes. New replicas join the reader endpoint automatically, so read capacity follows demand."
+      },
+      {
+        "id": "d",
+        "text": "Modify the writer instance to a larger instance class.",
+        "note": "A larger writer handles more load, but read capacity stays fixed and does not follow demand. It also leaves the idle replicas unused."
+      },
+      {
+        "id": "e",
+        "text": "Create an Amazon RDS Proxy for the cluster, and point the application at the proxy's default endpoint.",
+        "note": "RDS Proxy pools connections, but its default endpoint routes to the writer instance. Reads would still land on the writer unless a separate read-only endpoint were used."
+      }
+    ],
+    "correct": [
+      "a",
+      "c"
+    ],
+    "explanation": "Use the Aurora reader endpoint for read-only traffic and Aurora Auto Scaling to add or remove replicas behind it. The cluster endpoint always points to the writer, so applications that never use the reader endpoint leave replicas idle."
+  },
+  {
+    "id": "performant-3.3-03",
+    "domain": "performant",
+    "services": [
+      "Amazon Aurora"
+    ],
+    "text": "A company runs an Aurora PostgreSQL DB cluster with one writer and five Aurora Replicas. Three replicas are db.r6g.large instances that serve the application's short read queries. Two replicas are db.r6g.4xlarge instances that the company added for a data science team's long analytical queries, which must run against current data. All read traffic uses the reader endpoint, and analytical queries that land on the small replicas slow down the application.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure the data science tools to connect to the instance endpoint of one of the db.r6g.4xlarge replicas.",
+        "note": "An instance endpoint connects to a single replica, so the second large replica is unused and the team loses access if that instance fails or is replaced."
+      },
+      {
+        "id": "b",
+        "text": "Create an Aurora clone of the cluster each morning, and point the data science tools at the clone.",
+        "note": "A clone is a separate cluster that stops receiving changes after it is created, so analysts would not query current data. Daily recreation also adds operational work."
+      },
+      {
+        "id": "c",
+        "text": "Create one custom endpoint for the two db.r6g.4xlarge replicas and another for the three db.r6g.large replicas.",
+        "note": "Aurora custom endpoints load-balance connections across a chosen set of instances. Separate endpoints route each workload to the right-sized replicas, and both still read current data from the shared cluster volume."
+      },
+      {
+        "id": "d",
+        "text": "Keep using the reader endpoint for all reads, and enable Aurora Auto Scaling for replicas based on average CPU utilisation.",
+        "note": "More replicas behind the reader endpoint would still mix analytical and application queries on the same instances. This does not stop the long queries from slowing the application."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Aurora custom endpoints group specific instances so that different workloads use differently sized replicas. The reader endpoint spreads across every replica, and instance endpoints give no load balancing or failover."
+  },
+  {
+    "id": "performant-3.3-04",
+    "domain": "performant",
+    "services": [
+      "Amazon Aurora"
+    ],
+    "text": "A startup is launching a multi-tenant SaaS application on Amazon Aurora PostgreSQL. Both read and write load are unpredictable and can rise from almost nothing to many times the average within minutes, then fall again. The database must scale its compute capacity automatically without interrupting existing connections. The startup has a small team and wants the LEAST operational overhead.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Use Aurora Serverless v2 DB instances for the writer and the readers in the Aurora cluster.",
+        "note": "Aurora Serverless v2 adjusts the capacity of each instance in fine-grained ACU increments within seconds, without dropping connections. Because the writer also scales, write spikes are handled as well as read spikes."
+      },
+      {
+        "id": "b",
+        "text": "Use provisioned Aurora instances, and configure Aurora Auto Scaling to add Aurora Replicas when CPU utilisation is high.",
+        "note": "Aurora Auto Scaling adds read capacity only. Every write still goes to a single fixed-size writer, so write spikes cannot be absorbed."
+      },
+      {
+        "id": "c",
+        "text": "Use a provisioned Aurora writer, and run an AWS Lambda function that modifies the writer's instance class when CPU utilisation crosses a threshold.",
+        "note": "Changing the instance class of a provisioned writer causes a restart or failover that interrupts connections, and it requires custom automation that the team must maintain."
+      },
+      {
+        "id": "d",
+        "text": "Use Amazon RDS for PostgreSQL with storage autoscaling enabled.",
+        "note": "Storage autoscaling grows allocated storage when free space runs low. It does not change compute capacity, so CPU and memory remain fixed during spikes."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Aurora Serverless v2 scales the compute of writer and reader instances in place, in small increments, without disconnecting clients. Aurora Auto Scaling only changes the number of replicas, so it helps reads but never writes."
+  },
+  {
+    "id": "performant-3.3-05",
+    "domain": "performant",
+    "services": [
+      "Amazon DynamoDB"
+    ],
+    "text": "A company stores application events in an Amazon DynamoDB table that uses provisioned capacity. The partition key is the event date in YYYY-MM-DD format, and the sort key is the event timestamp. All writes for the current day target the same partition key, and the application receives write throttling errors even though the table's consumed write capacity is far below the provisioned write capacity. Reports must still be able to retrieve all events for a given date.\n\nWhich solution will resolve the throttling?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Increase the provisioned write capacity units for the table to several times the current peak write rate.",
+        "note": "Throttling happens because a single partition key value receives all writes and hits the per-partition throughput limit. Adding table-level capacity does not raise the limit of that one partition."
+      },
+      {
+        "id": "b",
+        "text": "Switch the table to on-demand capacity mode so that DynamoDB adapts its capacity to the write rate.",
+        "note": "On-demand mode removes capacity planning at table level, but a single partition key value is still subject to per-partition throughput limits, so the hot key keeps throttling."
+      },
+      {
+        "id": "c",
+        "text": "Add a global secondary index with the event date as its partition key, and send the report queries to it.",
+        "note": "A GSI keyed on event date has the same single hot key, so writes to the index throttle and can in turn throttle the base table."
+      },
+      {
+        "id": "d",
+        "text": "Append a random suffix from 1 to N to the date in each key, and have reports query all N keys for a date.",
+        "note": "Write sharding spreads one logical key across N physical partition key values, so writes are distributed across partitions. Reports can still read a whole date by querying each suffix in parallel."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "DynamoDB throughput is limited per partition, so a low-cardinality partition key creates a hot partition regardless of table-level capacity or capacity mode. Use high-cardinality keys, or shard a hot key with a calculated or random suffix and scatter-gather the reads."
+  },
+  {
+    "id": "performant-3.3-06",
+    "domain": "performant",
+    "services": [
+      "Amazon DynamoDB",
+      "Amazon DynamoDB Accelerator (DAX)"
+    ],
+    "text": "A gaming company stores player profiles in an Amazon DynamoDB table. The game reads the same popular profiles millions of times each hour, and reads outnumber writes 100 to 1. The company needs read latency in microseconds rather than single-digit milliseconds. The application already uses the DynamoDB SDK, and the company wants to minimise code changes.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add an Amazon ElastiCache (Redis OSS) cluster, and implement lazy loading in the application for profile reads.",
+        "note": "ElastiCache can deliver microsecond reads, but the application must be rewritten to manage the cache, including reads, writes and invalidation. This breaks the minimal-code-change requirement."
+      },
+      {
+        "id": "b",
+        "text": "Create a DynamoDB Accelerator (DAX) cluster, and switch the application to the DAX client.",
+        "note": "DAX is an in-memory cache for DynamoDB that is API-compatible with DynamoDB. Switching to the DAX client gives microsecond reads for cached items with minimal code changes."
+      },
+      {
+        "id": "c",
+        "text": "Increase the provisioned read capacity units for the table, and use strongly consistent reads.",
+        "note": "More read capacity prevents throttling but does not reduce per-request latency below the single-digit milliseconds that DynamoDB provides. Strongly consistent reads do not make reads faster."
+      },
+      {
+        "id": "d",
+        "text": "Convert the table to a DynamoDB global table with replicas in two additional AWS Regions.",
+        "note": "Global tables replicate data across Regions for multi-Region access and resilience. They reduce latency for distant users but do not deliver microsecond reads."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "DAX is the drop-in, API-compatible cache for DynamoDB that turns millisecond reads into microsecond reads for read-heavy workloads. ElastiCache can be faster or more flexible but needs application caching logic."
+  },
+  {
+    "id": "performant-3.3-07",
+    "domain": "performant",
+    "services": [
+      "Amazon DynamoDB"
+    ],
+    "text": "A company is launching a ticketing application that stores reservations in an Amazon DynamoDB table. When popular events go on sale, write traffic jumps from near zero to about 3,000 writes per second within seconds, and these sales happen at unannounced times. A test with provisioned capacity and DynamoDB auto scaling showed heavy throttling at the start of each surge. The table is idle most of the time.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Keep provisioned capacity with auto scaling, and lower the target utilisation to 20%.",
+        "note": "A lower target keeps more headroom, but auto scaling still reacts over minutes and cannot follow a jump from near zero to thousands of writes per second within seconds. It also pays for unused capacity."
+      },
+      {
+        "id": "b",
+        "text": "Set the provisioned write capacity permanently to the peak write rate.",
+        "note": "Fixed peak capacity prevents throttling, but the company pays for it while the table is idle most of the time. This is not cost-effective."
+      },
+      {
+        "id": "c",
+        "text": "Switch the table to on-demand capacity mode.",
+        "note": "On-demand mode instantly accommodates sudden traffic up to double the previous peak and charges only for requests made, so idle periods cost almost nothing."
+      },
+      {
+        "id": "d",
+        "text": "Add a DynamoDB Accelerator (DAX) cluster in front of the table.",
+        "note": "DAX caches reads. Writes pass through DAX to the table, so DAX does not prevent write throttling."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Choose on-demand mode for spiky, unpredictable or mostly idle workloads, and provisioned mode with auto scaling for steady or gradually changing traffic. Auto scaling responds in minutes, not seconds."
+  },
+  {
+    "id": "performant-3.3-08",
+    "domain": "performant",
+    "services": [
+      "Amazon MemoryDB",
+      "Amazon ElastiCache"
+    ],
+    "text": "A mobile game is replacing its relational leaderboard with an in-memory data store that uses the Redis OSS sorted set API. Queries must return the top 100 players and any player's rank in microseconds, and scores update thousands of times each second. Players buy score boosts with real money, so every acknowledged score update must survive a node failure or a full cluster restart without being lost. The company wants one data store, with no separate database behind it.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Use Amazon ElastiCache (Redis OSS) with replicas in a second Availability Zone, automatic failover, and daily automatic backups.",
+        "note": "ElastiCache supports sorted sets and Multi-AZ failover, but replication to replicas is asynchronous and backups are point-in-time snapshots. Acknowledged updates can be lost on failover or after a full cluster restart."
+      },
+      {
+        "id": "b",
+        "text": "Use an Amazon MemoryDB cluster with nodes in multiple Availability Zones, and store the scores in a sorted set.",
+        "note": "MemoryDB is Redis OSS-compatible and keeps all data in memory for microsecond reads. It writes every update to a Multi-AZ transactional log before acknowledging it, so no acknowledged score is lost on failover or restart."
+      },
+      {
+        "id": "c",
+        "text": "Use Amazon ElastiCache (Memcached) with several nodes across Availability Zones, and store each player's score as a key.",
+        "note": "Memcached is a simple multithreaded cache with no replication, persistence, or sorted data structures. Ranking would need application-side sorting, and a node failure loses its data."
+      },
+      {
+        "id": "d",
+        "text": "Store the scores in an Amazon DynamoDB table with a GSI on score, and add a DynamoDB Accelerator (DAX) cluster for reads.",
+        "note": "DynamoDB is durable, but DAX caches item and query results rather than maintaining ranks, and per-player rank queries are not a native operation. It also does not use the Redis OSS sorted set API."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Amazon MemoryDB is a durable, in-memory primary database: Redis OSS or Valkey data structures with a Multi-AZ transactional log. ElastiCache is a cache: it has the same data structures and fast failover, but asynchronous replication and snapshots can lose recent writes. Remember: MemoryDB when the in-memory store is the system of record, ElastiCache when a durable database sits behind it."
+  },
+  {
+    "id": "performant-3.3-09",
+    "domain": "performant",
+    "services": [
+      "Amazon ElastiCache",
+      "Amazon RDS"
+    ],
+    "text": "An e-commerce company caches inventory counts in Amazon ElastiCache in front of an Amazon RDS for PostgreSQL database. Suppliers update the counts for 500,000 products many times each day, but most products are rarely viewed. Product pages must never show a count older than the latest committed update. The cache has a small amount of memory, and a replaced cache node must not cause errors.\n\nWhich caching strategy will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Use write-through to update the cache on every inventory change, and keep the cached items without a TTL.",
+        "note": "Write-through keeps cached counts current, but every updated product stays in the cache with no expiry, including the many that are never viewed. The small cache fills with unread data."
+      },
+      {
+        "id": "b",
+        "text": "Use lazy loading to cache counts only after a cache miss, and set a TTL of 30 seconds on the cached items.",
+        "note": "Lazy loading with a short TTL caches only viewed products, but a cached count can be up to 30 seconds old after an update. This breaks the requirement to always show the latest count."
+      },
+      {
+        "id": "c",
+        "text": "Use write-through on every inventory change and lazy loading on misses, and set a TTL on each cached item.",
+        "note": "Write-through keeps every cached count current, the TTL removes products that are written but not read, and lazy loading refills items that expired or were lost with a replaced node."
+      },
+      {
+        "id": "d",
+        "text": "Use lazy loading to cache counts after a miss, and run a job every minute that refreshes the products changed in the database.",
+        "note": "A refresh job narrows the stale window but does not close it. A page can still show an outdated count for up to a minute after a change."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Write-through keeps cached data current; lazy loading caches only what is read and recovers from empty nodes; a TTL stops written-but-unread data from filling the cache. AWS recommends combining them. Lazy loading on its own, even with a short TTL or a refresh job, always leaves a stale window."
+  },
+  {
+    "id": "performant-3.3-10",
+    "domain": "performant",
+    "services": [
+      "Amazon ElastiCache",
+      "Amazon RDS"
+    ],
+    "text": "A retailer serves a catalog of 2 million products from an Amazon RDS for MySQL database. About 5% of the products receive 90% of the page views, and the database is overloaded by repeated reads of the same items. The company will add an Amazon ElastiCache cluster but has a small memory budget, so the cache should hold mainly the products that are actually requested. Product prices change several times each day, and a displayed price may be up to 10 minutes old.\n\nWhich combination of caching steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Use a write-through strategy that writes every product to the cache whenever the product is created or updated in the database.",
+        "note": "Write-through caches every written item, including the 95% of products that are rarely viewed. This fills the small cache with data that is seldom read."
+      },
+      {
+        "id": "b",
+        "text": "Use a lazy loading strategy that adds a product to the cache only after a cache miss reads it from the database.",
+        "note": "Lazy loading caches only items that are requested, so the cache naturally fills with the popular 5% of products and fits the small memory budget."
+      },
+      {
+        "id": "c",
+        "text": "Preload the entire product catalog into the cache each night by using a scheduled job.",
+        "note": "Preloading caches every product, which exceeds the small memory budget, and prices changed during the day would remain stale until the next load."
+      },
+      {
+        "id": "d",
+        "text": "Set a TTL of 10 minutes on each cached product item.",
+        "note": "A TTL makes cached items expire, so the next read after expiry reloads the current price from the database. A 10-minute TTL keeps prices within the allowed staleness."
+      },
+      {
+        "id": "e",
+        "text": "Disable item expiration, and rely on the cache's LRU eviction to remove products.",
+        "note": "LRU eviction removes items only when memory is full. Popular products would stay cached with outdated prices for much longer than 10 minutes."
+      }
+    ],
+    "correct": [
+      "b",
+      "d"
+    ],
+    "explanation": "Lazy loading keeps only requested data in the cache, and a TTL bounds how stale that data can become. Write-through keeps data current but caches everything that is written, which wastes memory when most items are rarely read."
+  },
+  {
+    "id": "performant-3.3-11",
+    "domain": "performant",
+    "services": [
+      "Amazon RDS Proxy",
+      "AWS Lambda",
+      "Amazon RDS"
+    ],
+    "text": "A company's API runs on AWS Lambda functions that query an Amazon RDS for MySQL DB instance. During traffic spikes, Lambda scales to more than 2,000 concurrent executions, and the database returns \"Too many connections\" errors even though its CPU utilisation stays below 40%. The company must serve every request during spikes and wants the LEAST operational overhead.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure reserved concurrency of 300 on the Lambda functions so that they cannot open more connections than the database allows.",
+        "note": "Reserved concurrency caps how many functions run at once, which protects the database but throttles requests during spikes. This breaks the requirement to serve every request."
+      },
+      {
+        "id": "b",
+        "text": "Create an Amazon RDS Proxy for the DB instance, and configure the Lambda functions to connect through the proxy endpoint.",
+        "note": "RDS Proxy maintains a pool of database connections and multiplexes many short-lived Lambda connections onto them. The database sees far fewer connections, and requests are served without code changes beyond the endpoint."
+      },
+      {
+        "id": "c",
+        "text": "Modify the DB instance to a larger instance class to raise the max_connections limit.",
+        "note": "A larger class raises the connection limit but costs more while CPU is mostly idle. Each new Lambda environment still opens its own connection, so a larger spike can exhaust connections again."
+      },
+      {
+        "id": "d",
+        "text": "Create two read replicas, and distribute the Lambda functions' connections across the primary and the replicas.",
+        "note": "Read replicas spread read-only connections, but writes must still go to the primary, and the application would need logic to split queries. Connection exhaustion on the primary remains possible."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "RDS Proxy pools and reuses database connections, which is the standard fix for serverless or highly concurrent clients exhausting database connections. It also shortens failover time. Reserved concurrency protects the database only by rejecting work."
+  },
+  {
+    "id": "performant-3.3-12",
+    "domain": "performant",
+    "services": [
+      "Amazon Neptune"
+    ],
+    "text": "A bank is building a fraud detection service. It must find, in milliseconds, whether a new transaction is connected to known fraudulent accounts through shared devices, phone numbers, IP addresses or intermediate accounts, often four to six hops away. The relationships change constantly as new transactions arrive.\n\nWhich database service is the MOST suitable for this workload?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Amazon RDS for PostgreSQL with tables for accounts and relationships, queried by using recursive joins.",
+        "note": "A relational database can model the relationships, but each additional hop needs another join over large tables. Queries four to six hops deep become too slow for millisecond responses."
+      },
+      {
+        "id": "b",
+        "text": "Amazon DynamoDB with an adjacency list design, queried hop by hop from the application.",
+        "note": "An adjacency list in DynamoDB can return one hop quickly, but multi-hop traversals need many round trips and custom application logic, so deep traversals are slow and complex."
+      },
+      {
+        "id": "c",
+        "text": "Amazon Neptune, queried by using a graph traversal language such as Gremlin or openCypher.",
+        "note": "Neptune is a purpose-built graph database that stores relationships as first-class edges and traverses many hops efficiently. This fits connected-data queries such as fraud rings."
+      },
+      {
+        "id": "d",
+        "text": "Amazon Redshift, queried by using SQL with materialised views refreshed every hour.",
+        "note": "Redshift is a data warehouse for analytical queries over large datasets. Hourly refreshes cannot reflect constantly changing relationships, and it is not designed for millisecond lookups per transaction."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Use a graph database (Amazon Neptune) when queries traverse relationships of variable depth, such as fraud rings, social networks and recommendations. Relational joins and key-value adjacency lists degrade quickly as the number of hops grows."
+  },
+  {
+    "id": "performant-3.3-13",
+    "domain": "performant",
+    "services": [
+      "Amazon Keyspaces (for Apache Cassandra)"
+    ],
+    "text": "A company runs a self-managed Apache Cassandra cluster on premises for a time-ordered messaging workload. The application uses Cassandra Query Language (CQL) drivers throughout. The company wants to move to AWS, keep the existing CQL code, and stop managing nodes, patching and capacity planning. The workload must deliver single-digit millisecond latency at any scale.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Migrate the data to Amazon Keyspaces (for Apache Cassandra) and use on-demand capacity mode.",
+        "note": "Amazon Keyspaces is a serverless, Cassandra-compatible database that works with existing CQL drivers and code. It removes node management and scales automatically with single-digit millisecond latency."
+      },
+      {
+        "id": "b",
+        "text": "Migrate the data to Amazon DynamoDB, and rewrite the data access layer to use the DynamoDB API.",
+        "note": "DynamoDB is serverless and fast, but moving from CQL to the DynamoDB API requires rewriting the data access code, which breaks the requirement to keep CQL."
+      },
+      {
+        "id": "c",
+        "text": "Migrate the data to Amazon DocumentDB (with MongoDB compatibility).",
+        "note": "DocumentDB is compatible with MongoDB drivers, not CQL. The application would need to be rewritten."
+      },
+      {
+        "id": "d",
+        "text": "Run Apache Cassandra on Amazon EC2 instances across three Availability Zones by using storage optimized instances.",
+        "note": "Cassandra on EC2 keeps CQL compatibility, but the company would still manage nodes, patching and capacity, which it wants to stop doing."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Match the migration target to the API: Cassandra/CQL to Amazon Keyspaces, MongoDB to Amazon DocumentDB, graph to Neptune. Keyspaces is serverless, so it also removes cluster management."
+  },
+  {
+    "id": "performant-3.3-14",
+    "domain": "performant",
+    "services": [
+      "Amazon DocumentDB"
+    ],
+    "text": "A content platform stores articles as JSON documents with nested fields and arrays, and its application uses MongoDB drivers and queries that filter and index nested fields. The self-managed MongoDB replica set on Amazon EC2 is hard to operate, and read traffic is growing quickly. The company wants a managed database that keeps its application code largely unchanged and lets it add read capacity quickly.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Migrate to Amazon DynamoDB, storing each article as an item and using global secondary indexes for nested fields.",
+        "note": "DynamoDB stores JSON-like items, but it is not compatible with MongoDB drivers or queries, so the application would need significant changes."
+      },
+      {
+        "id": "b",
+        "text": "Migrate to Amazon Aurora PostgreSQL, storing each article in a JSONB column with GIN indexes.",
+        "note": "Aurora PostgreSQL can store and index JSON, but the application would need to move from MongoDB queries to SQL, which is a significant rewrite."
+      },
+      {
+        "id": "c",
+        "text": "Move the MongoDB replica set to larger EC2 instances in an Auto Scaling group, and add secondary members as read traffic grows.",
+        "note": "This keeps the MongoDB code unchanged, but the company still operates the replica set itself. Each new secondary must also copy the full dataset before it can serve reads, so capacity is not added quickly."
+      },
+      {
+        "id": "d",
+        "text": "Migrate to Amazon DocumentDB (with MongoDB compatibility), and add read replica instances to the cluster as read traffic grows.",
+        "note": "DocumentDB is a managed document database compatible with MongoDB drivers and queries. Its storage is shared by the cluster, so up to 15 replica instances can be added quickly to scale reads."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "For managed document workloads that use MongoDB APIs, choose Amazon DocumentDB. Like Aurora, it separates compute from shared storage, so read replicas can be added quickly without copying data."
+  },
+  {
+    "id": "performant-3.3-15",
+    "domain": "performant",
+    "services": [
+      "Amazon Redshift",
+      "Amazon RDS"
+    ],
+    "text": "A retail company keeps 5 years of sales history, about 30 TB, in an Amazon RDS for PostgreSQL database and runs business intelligence dashboards against a read replica. Dashboard queries aggregate billions of rows and join several large fact and dimension tables, and they now take many minutes to run. The company wants interactive query performance for these analytics.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Upgrade the read replica to the largest available memory optimized instance class.",
+        "note": "A larger replica adds memory and CPU, but a row-oriented OLTP engine still scans whole rows across billions of records. Analytical aggregation at this scale remains slow."
+      },
+      {
+        "id": "b",
+        "text": "Migrate the data to Amazon Aurora PostgreSQL, and run the dashboards against Aurora Replicas.",
+        "note": "Aurora improves OLTP throughput and availability, but it is still a row-oriented transactional engine, so large analytical joins and aggregations remain slow."
+      },
+      {
+        "id": "c",
+        "text": "Load the sales history into Amazon Redshift, and point the dashboards at the Redshift cluster.",
+        "note": "Amazon Redshift is a columnar, massively parallel data warehouse designed for complex analytical queries over large datasets. It reads only the needed columns and spreads work across nodes, giving interactive performance."
+      },
+      {
+        "id": "d",
+        "text": "Copy the data into Amazon DynamoDB, and add a DynamoDB Accelerator (DAX) cluster for the dashboards.",
+        "note": "DynamoDB is a key-value database optimised for access by key. It does not support joins or ad hoc aggregation across billions of rows, and DAX only caches item reads."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Use Amazon Redshift for OLAP: large aggregations and joins over historical data. RDS and Aurora are OLTP engines; read replicas help with read volume but not with analytical query shape."
+  },
+  {
+    "id": "performant-3.3-16",
+    "domain": "performant",
+    "services": [
+      "Amazon Aurora"
+    ],
+    "text": "A company runs an Aurora MySQL DB cluster in us-east-1. It has expanded to Europe and Asia, and users there see slow page loads because every read crosses an ocean. The company wants local read latency in eu-west-1 and ap-northeast-1. Replication to the remote Regions must typically lag by less than 1 second and must not consume compute resources on the writer instance. Writes can continue to go to us-east-1.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create cross-Region Aurora read replica clusters in the two Regions by using MySQL binary log replication.",
+        "note": "Binary log replication works across Regions, but the writer instance must generate and ship binary logs, which consumes its resources, and lag is typically higher than storage-based replication."
+      },
+      {
+        "id": "b",
+        "text": "Convert the cluster to an Aurora Global Database, and add secondary clusters in eu-west-1 and ap-northeast-1.",
+        "note": "Aurora Global Database replicates at the storage layer to secondary Regions with typical lag under 1 second and without using writer compute. Applications in each Region read from the local secondary cluster."
+      },
+      {
+        "id": "c",
+        "text": "Put an Amazon CloudFront distribution in front of the application, and cache all database-backed pages for 1 minute.",
+        "note": "CloudFront caching can speed up shared static responses, but personalised, database-backed pages cannot be cached safely, and reads that miss the cache still cross the ocean."
+      },
+      {
+        "id": "d",
+        "text": "Migrate the data to Amazon DynamoDB global tables with replicas in the three Regions.",
+        "note": "Global tables provide multi-Region reads and writes, but moving from Aurora MySQL to DynamoDB requires redesigning the data model and rewriting the application."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Aurora Global Database uses dedicated storage-level replication to give low-latency local reads in up to several secondary Regions with typical sub-second lag, without load on the primary writer. It also enables fast cross-Region recovery."
+  },
+  {
+    "id": "performant-3.3-17",
+    "domain": "performant",
+    "services": [
+      "Amazon DynamoDB"
+    ],
+    "text": "A company stores orders in an Amazon DynamoDB table with customerId as the partition key and orderDate as the sort key. A new store dashboard must list a store's orders for a date range, and it is refreshed frequently by thousands of stores. The current implementation uses a Scan with a filter on storeId, which is slow and consumes most of the table's read capacity. The table already holds production data.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a global secondary index with storeId as the partition key and orderDate as the sort key.",
+        "note": "A GSI can be added to an existing table and supports a different partition key. Querying by storeId and a date range reads only the matching items, which is fast and uses little capacity."
+      },
+      {
+        "id": "b",
+        "text": "Create a local secondary index with storeId as the sort key, and query it by store and date range.",
+        "note": "A local secondary index must be created when the table is created, and it keeps customerId as the partition key. It cannot support queries by store across customers."
+      },
+      {
+        "id": "c",
+        "text": "Replace the Scan with a parallel Scan that uses multiple segments and the same filter on storeId.",
+        "note": "A parallel Scan finishes sooner, but it still reads the entire table and consumes even more read capacity in a short time."
+      },
+      {
+        "id": "d",
+        "text": "Add a DynamoDB Accelerator (DAX) cluster, and run the existing filtered Scan through the DAX client.",
+        "note": "DAX can cache Scan results, but each dashboard needs different store and date filters, and the underlying Scans still read the whole table on every cache miss."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Design DynamoDB access patterns with keys and indexes, not Scans. A global secondary index adds a new partition key and can be created at any time; a local secondary index shares the base table's partition key and must be defined at table creation."
+  }
+]

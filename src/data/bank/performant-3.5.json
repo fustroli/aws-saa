@@ -1,0 +1,587 @@
+[
+  {
+    "id": "performant-3.5-01",
+    "domain": "performant",
+    "services": [
+      "Amazon Kinesis Data Streams",
+      "Amazon Data Firehose",
+      "Amazon SQS"
+    ],
+    "text": "A gaming company collects player telemetry events from mobile clients at about 20,000 events per second. Three independent teams build consumer applications: a fraud detector that must react within 1 second, a leaderboard service, and a machine learning feature pipeline. Each consumer must read every event in order for a given player, and the ML team must be able to reprocess the last 3 days of events after a model change.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Ingest the events into an Amazon Data Firehose stream. Configure the stream to deliver to an Amazon S3 bucket and have each consumer read new objects from the bucket.",
+        "note": "Firehose buffers records and delivers batches to destinations such as Amazon S3. Consumers polling S3 objects cannot react within 1 second, and Firehose does not support multiple custom consumers reading the stream directly."
+      },
+      {
+        "id": "b",
+        "text": "Ingest the events into an Amazon Kinesis Data Streams stream partitioned by player ID with a 3-day retention period. Register each consumer application for enhanced fan-out.",
+        "note": "Kinesis Data Streams preserves order per partition key, lets many consumers read the same records independently, and retains data for up to 365 days for replay. Enhanced fan-out gives each consumer dedicated read throughput with low latency. This meets every requirement."
+      },
+      {
+        "id": "c",
+        "text": "Ingest the events into an Amazon SQS FIFO queue that uses player ID as the message group ID. Have each consumer application poll the queue.",
+        "note": "An SQS FIFO queue preserves order per message group, but each message is processed by only one consumer and is deleted after processing. Three teams cannot each read every event, and deleted messages cannot be replayed."
+      },
+      {
+        "id": "d",
+        "text": "Ingest the events into an Amazon Kinesis Data Streams stream partitioned by player ID with the default retention period. Register each consumer application for enhanced fan-out.",
+        "note": "This design supports ordered, low-latency fan-out, but the default retention period is 24 hours. The ML team could not reprocess the last 3 days of events."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Kinesis Data Streams is the choice when several applications must each read the same ordered records in real time and replay them later. Retention must be extended beyond the 24-hour default to support a 3-day replay. Firehose is a delivery service to destinations, and SQS distributes each message to only one consumer."
+  },
+  {
+    "id": "performant-3.5-02",
+    "domain": "performant",
+    "services": [
+      "Amazon Data Firehose",
+      "AWS Glue",
+      "Amazon S3"
+    ],
+    "text": "An ecommerce company wants to land website clickstream records, which are produced as JSON, in an Amazon S3 data lake. Analysts query the data with Amazon Athena and have asked for the records to be stored in Apache Parquet format. Data that arrives in S3 within a few minutes is acceptable. The company does not want to write or operate any custom ingestion code.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Send the records to an Amazon Kinesis Data Streams stream. Use an AWS Lambda function as the consumer to batch the records, convert them to Parquet, and write them to Amazon S3.",
+        "note": "This works, but the company must write, deploy, and maintain the conversion and batching code in the Lambda function. It has more operational overhead than a managed delivery stream."
+      },
+      {
+        "id": "b",
+        "text": "Send the records to an Amazon Data Firehose stream that delivers JSON to Amazon S3. Schedule an AWS Glue ETL job every hour to convert the new files to Parquet.",
+        "note": "This produces Parquet, but it adds a second pipeline stage to build and schedule, and data is not in Parquet until the hourly job runs. It is not the least operational overhead and misses the few-minutes target."
+      },
+      {
+        "id": "c",
+        "text": "Send the records to an Amazon Data Firehose stream with record format conversion to Apache Parquet, using an AWS Glue Data Catalog table as the schema.",
+        "note": "Firehose can convert incoming JSON records to Apache Parquet or ORC by using a schema from the AWS Glue Data Catalog before delivery to S3. It is fully managed, buffers for minutes at most, and requires no custom code."
+      },
+      {
+        "id": "d",
+        "text": "Send the records to an Amazon MSK cluster. Use a Kafka Connect S3 sink connector on Amazon MSK Connect with a Parquet format converter to write to Amazon S3.",
+        "note": "This can produce Parquet files, but the company must size and manage a Kafka cluster and connector configuration. It has more operational overhead than Firehose for simple delivery to S3."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Amazon Data Firehose can convert records to Parquet or ORC in flight by using a Glue Data Catalog schema, which removes the need for any custom transformation code. When the requirement is managed delivery into S3, Firehose beats a Kinesis Data Streams or MSK pipeline that needs consumers or connectors."
+  },
+  {
+    "id": "performant-3.5-03",
+    "domain": "performant",
+    "services": [
+      "Amazon MSK",
+      "Amazon Kinesis Data Streams",
+      "AWS Secrets Manager"
+    ],
+    "text": "A financial services company runs a self-managed Apache Kafka cluster on premises. Dozens of producer and consumer applications use the Kafka client libraries and authenticate with SASL/SCRAM user names and passwords. The application teams cannot change client code or client security settings during the migration. The company is moving the applications to AWS and wants to stop patching and operating Kafka brokers.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Amazon MSK Serverless cluster, replicate the topics to it with MirrorMaker 2, and point the applications at the serverless bootstrap endpoint.",
+        "note": "MSK Serverless removes capacity management, but it requires IAM access control for every client. The SASL/SCRAM clients would need new authentication libraries and settings, which the teams cannot change."
+      },
+      {
+        "id": "b",
+        "text": "Migrate the topics to Amazon Kinesis Data Streams, and update the producers and consumers to use the Kinesis Producer Library and Kinesis Client Library.",
+        "note": "Kinesis Data Streams is a managed streaming service, but it uses its own APIs rather than the Kafka protocol. Every application would need to be rewritten."
+      },
+      {
+        "id": "c",
+        "text": "Install Apache Kafka on Amazon EC2 instances in an Auto Scaling group across three Availability Zones, and enable SASL/SCRAM on the new brokers.",
+        "note": "The clients would keep working unchanged, but the company would still patch and operate the Kafka brokers on EC2, which it wants to stop doing."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon MSK provisioned cluster with SASL/SCRAM authentication backed by AWS Secrets Manager, and replicate the topics with MirrorMaker 2.",
+        "note": "MSK provisioned clusters support SASL/SCRAM with credentials stored in AWS Secrets Manager, so existing Kafka clients connect with their current settings. AWS operates and patches the brokers."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Amazon MSK runs open-source Apache Kafka, so existing Kafka clients move without code changes. The near-miss is MSK Serverless: it is simpler to operate but supports only IAM access control, so clients that use SASL/SCRAM or mutual TLS need an MSK provisioned cluster. Kinesis Data Streams would require rewriting every client."
+  },
+  {
+    "id": "performant-3.5-04",
+    "domain": "performant",
+    "services": [
+      "AWS Glue",
+      "Amazon Athena",
+      "Amazon S3"
+    ],
+    "text": "A company stores several terabytes of CSV and JSON log files in Amazon S3. New folders with new columns are added every few weeks. Analysts need to run ad hoc SQL queries against the data a few times each week. The company wants a serverless solution and wants the table schemas to stay current without manual updates.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Schedule an AWS Glue crawler to scan the S3 prefixes and update tables in the AWS Glue Data Catalog.",
+        "note": "A Glue crawler infers schemas and partitions from data in S3 and creates or updates tables in the Data Catalog. Running it on a schedule keeps schemas current with no manual work."
+      },
+      {
+        "id": "b",
+        "text": "Load the files into an Amazon Redshift provisioned cluster with the COPY command each night and have analysts query Redshift.",
+        "note": "Redshift can run the queries, but a provisioned cluster runs continuously and must be managed and loaded each night. It is not serverless and is costly for a few ad hoc queries each week."
+      },
+      {
+        "id": "c",
+        "text": "Use Amazon Athena to query the Data Catalog tables directly against the files in Amazon S3.",
+        "note": "Athena is a serverless query service that runs standard SQL against data in S3 by using table definitions in the Glue Data Catalog. The company pays only for the queries it runs."
+      },
+      {
+        "id": "d",
+        "text": "Launch an Amazon EMR cluster with Apache Hive and use the Hive metastore on the primary node to store the table schemas.",
+        "note": "EMR with Hive can query S3 data, but the company must manage the cluster, and a metastore on the primary node is lost when the cluster terminates. It is not serverless."
+      },
+      {
+        "id": "e",
+        "text": "Create an AWS Lambda function that runs when new objects arrive and inserts each record into an Amazon RDS for PostgreSQL database for querying.",
+        "note": "This moves the data into a database instance that must be provisioned and sized for terabytes of logs, and schema changes still require manual table updates. It is not serverless or self-updating."
+      }
+    ],
+    "correct": [
+      "a",
+      "c"
+    ],
+    "explanation": "A Glue crawler keeps the Data Catalog schemas current, and Athena queries S3 in place through that catalog with no infrastructure. This pairing is the standard serverless pattern for ad hoc SQL on a data lake."
+  },
+  {
+    "id": "performant-3.5-05",
+    "domain": "performant",
+    "services": [
+      "Amazon Athena",
+      "AWS Glue",
+      "Amazon S3"
+    ],
+    "text": "A media company runs Amazon Athena queries against 40 TB of uncompressed JSON request logs in Amazon S3. Almost every query filters on a single day and reads only 4 of the 60 fields in each record. The queries take several minutes and the Athena bill is growing quickly.\n\nWhich combination of steps will improve query performance and reduce cost the MOST? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Convert the data to Apache Parquet with an AWS Glue ETL job.",
+        "note": "Parquet is a compressed columnar format. Athena reads only the 4 columns that a query needs, which greatly reduces the data scanned, the query time, and the per-TB-scanned charge."
+      },
+      {
+        "id": "b",
+        "text": "Move the log files to the S3 Standard-Infrequent Access storage class.",
+        "note": "S3 Standard-IA reduces storage cost but adds per-GB retrieval charges for every query and does not reduce the amount of data Athena scans. It does not improve query performance."
+      },
+      {
+        "id": "c",
+        "text": "Partition the data in S3 by date and register the partitions in the AWS Glue Data Catalog.",
+        "note": "With date partitions, Athena prunes partitions and scans only the day that the query filters on instead of all 40 TB. This reduces both run time and cost."
+      },
+      {
+        "id": "d",
+        "text": "Enable S3 Transfer Acceleration on the bucket that stores the logs.",
+        "note": "Transfer Acceleration speeds up long-distance uploads and downloads over the internet through edge locations. It does not affect how much data Athena scans inside AWS."
+      },
+      {
+        "id": "e",
+        "text": "Compress each JSON file with gzip and keep the existing folder layout.",
+        "note": "Compression reduces the bytes scanned, but Athena still reads every field of every record across all 40 TB because JSON is row-based and nothing is partitioned. Columnar format and partitioning give far larger gains."
+      }
+    ],
+    "correct": [
+      "a",
+      "c"
+    ],
+    "explanation": "Athena charges by data scanned, so the two biggest levers are a columnar format (read only the needed columns) and partitioning (read only the needed days). Plain compression helps but cannot skip columns or partitions."
+  },
+  {
+    "id": "performant-3.5-06",
+    "domain": "performant",
+    "services": [
+      "Amazon Redshift",
+      "Amazon Redshift Spectrum",
+      "Amazon S3"
+    ],
+    "text": "A retail company keeps the last 12 months of sales data in an Amazon Redshift cluster for dashboards. Seven years of older sales data is stored in Amazon S3 as Parquet files and is cataloged in the AWS Glue Data Catalog. Analysts occasionally need to run queries that join current Redshift tables with the historical data. The company does not want to increase the size of the Redshift cluster.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Use the COPY command to load the historical data into the Redshift cluster before each analysis. Drop the tables after the analysis is complete.",
+        "note": "COPY loads data into cluster storage. Seven years of data might not fit without resizing the cluster, and loading and dropping tables for each analysis adds operational work."
+      },
+      {
+        "id": "b",
+        "text": "Create a Redshift external schema that points to the Glue Data Catalog database, and join the S3 data to local tables with Redshift Spectrum.",
+        "note": "Redshift Spectrum queries data in S3 directly through external tables defined in the Glue Data Catalog and can join it with local Redshift tables in one SQL statement. No data is loaded and the cluster is not resized."
+      },
+      {
+        "id": "c",
+        "text": "Query the historical data with Amazon Athena, export the results to Amazon S3, and load them into temporary Redshift tables with COPY for each join.",
+        "note": "This works but adds a multi-step export and load process for every analysis. It has more operational overhead than querying the S3 data in place from Redshift."
+      },
+      {
+        "id": "d",
+        "text": "Launch an Amazon EMR cluster with Apache Spark that reads the Parquet files from S3 and the current tables from Redshift through JDBC to perform the join.",
+        "note": "EMR can perform the join, but the company must manage a cluster and write Spark jobs. This adds far more operational overhead than a SQL query in Redshift."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Redshift Spectrum extends Redshift queries to data in S3 through external tables, so hot data stays in the cluster and cold data stays in S3. Use Spectrum when you must join warehouse tables with data lake files without loading them; use Athena when there is no Redshift cluster in the picture."
+  },
+  {
+    "id": "performant-3.5-07",
+    "domain": "performant",
+    "services": [
+      "AWS Lake Formation",
+      "Amazon Athena",
+      "Amazon Redshift Spectrum",
+      "AWS Glue"
+    ],
+    "text": "A healthcare company has built a data lake in Amazon S3 that is cataloged in the AWS Glue Data Catalog. Analysts in several departments query it with Amazon Athena and Amazon Redshift Spectrum. Each department must see only certain columns of the patient tables, and regional teams must see only rows for their own region. The security team wants to define and audit these permissions in one place.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a separate S3 prefix and IAM policy for each department and region. Run AWS Glue jobs to copy the permitted columns and rows into each prefix.",
+        "note": "This enforces access by duplicating data, which multiplies storage and requires jobs to keep every copy in sync. Permissions are scattered across many IAM policies, which adds significant operational overhead."
+      },
+      {
+        "id": "b",
+        "text": "Register the S3 locations with AWS Lake Formation. Grant column-level permissions and row-level data filters on the catalog tables to each department's IAM roles.",
+        "note": "Lake Formation centrally manages fine-grained permissions on Data Catalog tables, including column-level and row-level filters. Athena and Redshift Spectrum enforce these grants, and access is auditable in one place."
+      },
+      {
+        "id": "c",
+        "text": "Write S3 bucket policies with conditions on object prefixes and IAM principal tags for each department and region.",
+        "note": "Bucket policies control access to whole objects, not to columns or rows inside the files. They cannot hide specific columns of a table from a department."
+      },
+      {
+        "id": "d",
+        "text": "Create Athena views for each department and region that select the permitted columns and rows. Grant each IAM role access only to its views.",
+        "note": "Views can hide columns and rows in Athena, but IAM cannot stop users from querying the underlying tables or S3 data directly, and the views do not apply to Redshift Spectrum. Many views must be maintained by hand."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "AWS Lake Formation adds central, fine-grained (column, row, and cell-level) permissions on top of the Glue Data Catalog that integrated engines such as Athena and Redshift Spectrum enforce. IAM and bucket policies operate on objects, not on columns or rows."
+  },
+  {
+    "id": "performant-3.5-08",
+    "domain": "performant",
+    "services": [
+      "Amazon EMR",
+      "AWS Glue",
+      "Amazon EC2"
+    ],
+    "text": "A research company runs nightly Apache Spark jobs and Apache HBase workloads on an on-premises Hadoop cluster. The jobs depend on custom native libraries and specific Spark configuration tuning that the data engineers adjust frequently. The company wants to move the workloads to AWS, keep control over the cluster software and instance types, and shut down compute when jobs are not running.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Rewrite the jobs as AWS Glue ETL jobs, package the custom libraries as job dependencies, and run the Spark code on a Glue schedule.",
+        "note": "AWS Glue runs serverless Spark, but it does not run HBase and does not let the engineers choose instance types or install arbitrary native libraries on the cluster nodes. It does not provide the required control."
+      },
+      {
+        "id": "b",
+        "text": "Install Hadoop, Spark, and HBase on a fleet of Amazon EC2 instances built from a custom AMI, and use scripts to start and stop the instances each night.",
+        "note": "This keeps full control, but the company must install, configure, and integrate the Hadoop stack itself. Amazon EMR provides the same frameworks as a managed cluster service."
+      },
+      {
+        "id": "c",
+        "text": "Load the data into Amazon Redshift and convert the Spark jobs and HBase workloads to SQL stored procedures.",
+        "note": "Redshift is a data warehouse for SQL analytics. Converting Spark and HBase workloads would require a full rewrite and would not preserve the custom libraries."
+      },
+      {
+        "id": "d",
+        "text": "Run the jobs on transient Amazon EMR clusters that use bootstrap actions for the custom libraries and configuration classifications for Spark tuning.",
+        "note": "Amazon EMR provides managed Hadoop, Spark, and HBase on instance types that the company chooses. Bootstrap actions and configuration classifications give control over software, and transient clusters that terminate after the jobs stop compute charges when idle."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Amazon EMR is the fit when you need the Hadoop ecosystem (Spark, HBase, Hive) with control over instances and software. AWS Glue is serverless Spark for ETL with less control; it does not run HBase."
+  },
+  {
+    "id": "performant-3.5-09",
+    "domain": "performant",
+    "services": [
+      "Amazon Quick Sight",
+      "Amazon Athena",
+      "Amazon S3"
+    ],
+    "text": "A logistics company stores shipment data in Amazon S3 and queries it with Amazon Athena. About 300 business users, most of whom view reports only a few times each month, need interactive dashboards with fast filtering. The company wants a fully managed business intelligence service, does not want to manage servers or install desktop BI software, and wants dashboards to respond quickly without running an Athena query on every click.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Use Amazon Quick Sight with Athena as the data source, import the data into SPICE on a schedule, and share dashboards with view-only users.",
+        "note": "Amazon Quick Sight (formerly Amazon QuickSight) is a fully managed BI service. SPICE holds the data in memory so dashboard interactions do not query Athena each time, and low-cost view-only user licences suit occasional viewers."
+      },
+      {
+        "id": "b",
+        "text": "Use Amazon Quick Sight with Athena as the data source in direct query mode, and share the dashboards with view-only users.",
+        "note": "This is fully managed, but direct query sends a query to Athena for dashboard interactions. That adds latency and Athena scan charges, which the company wants to avoid."
+      },
+      {
+        "id": "c",
+        "text": "Install a commercial BI server on Amazon EC2 instances behind an Application Load Balancer. Connect it to Athena through the JDBC driver.",
+        "note": "This can serve dashboards, but the company must manage servers and buy BI licenses. It is not fully managed and is not the most cost-effective option."
+      },
+      {
+        "id": "d",
+        "text": "Load the data into an Amazon Redshift provisioned cluster, build charts in Amazon Redshift query editor v2, and share them with the business users.",
+        "note": "A provisioned Redshift cluster runs continuously and is costly for occasional report viewers. The query editor is a SQL tool for analysts, not a managed BI dashboard service for 300 business users."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Amazon Quick Sight (formerly QuickSight) is the AWS managed BI service, and SPICE imports data into memory so dashboards stay fast without re-querying the source. Direct query mode is the near-miss: it works but pays for and waits on Athena for every interaction."
+  },
+  {
+    "id": "performant-3.5-10",
+    "domain": "performant",
+    "services": [
+      "AWS DataSync",
+      "AWS Direct Connect",
+      "Amazon EFS"
+    ],
+    "text": "A company is migrating 60 TB of files from an on-premises NFS server to Amazon EFS. The data center has a 10 Gbps AWS Direct Connect connection that is mostly idle. Users will keep changing files on the NFS server for the 3 weeks before cutover, and the final cutover window is 4 hours. The company wants built-in data integrity verification and does not want to write transfer scripts.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Order several AWS Snowball Edge Storage Optimized devices. Copy the data to the devices, ship them to AWS, and import the data into Amazon EFS.",
+        "note": "Snowball Edge imports data into Amazon S3, not directly into EFS, and an offline copy would be weeks out of date by cutover. The idle 10 Gbps link can move 60 TB in well under a day."
+      },
+      {
+        "id": "b",
+        "text": "Mount the EFS file system on an Amazon EC2 instance and run rsync jobs over the Direct Connect connection from an on-premises server on a schedule.",
+        "note": "rsync can copy incremental changes, but the company must write, schedule, and monitor the scripts and handle verification and parallelism itself. This does not meet the requirement to avoid transfer scripts."
+      },
+      {
+        "id": "c",
+        "text": "Deploy an AWS DataSync agent on premises, and run a DataSync task from the NFS share to Amazon EFS over Direct Connect repeatedly until cutover.",
+        "note": "DataSync is a managed online transfer service that copies only changed files on later runs, verifies data integrity, and uses the available bandwidth. A final incremental run fits easily in the 4-hour cutover window."
+      },
+      {
+        "id": "d",
+        "text": "Create an AWS Transfer Family SFTP server with Amazon EFS as the backend storage. Have the operations team upload the files with an SFTP client.",
+        "note": "Transfer Family provides managed SFTP endpoints for users and partners to exchange files. It is not designed for bulk incremental migration of a 60 TB file share and offers no automatic change detection."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "AWS DataSync is the managed tool for online migration of file shares to EFS, FSx, or S3, with incremental runs and integrity checks. Choose Snow Family only when the network cannot move the data in time, and Transfer Family when external users need SFTP or FTP access."
+  },
+  {
+    "id": "performant-3.5-11",
+    "domain": "performant",
+    "services": [
+      "AWS Snowball Edge",
+      "AWS DataSync",
+      "Amazon S3"
+    ],
+    "text": "A film studio must move 900 TB of archived video from its data center to Amazon S3 within 6 weeks. The data center has a 500 Mbps internet connection that is shared with production traffic, and installing AWS Direct Connect would take several months. The archive is static and will not change during the migration.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Order multiple AWS Snowball Edge Storage Optimized devices. Copy the archive to the devices in parallel and ship them to AWS for import into Amazon S3.",
+        "note": "Snowball Edge devices move large datasets offline, so throughput does not depend on the internet link. Running several devices in parallel can move hundreds of terabytes within weeks."
+      },
+      {
+        "id": "b",
+        "text": "Deploy an AWS DataSync agent on premises, and run parallel DataSync tasks that transfer the archive to Amazon S3 over the internet connection.",
+        "note": "DataSync makes good use of available bandwidth, but 900 TB over a 500 Mbps link would take more than 5 months even at full utilization. It cannot meet the 6-week deadline."
+      },
+      {
+        "id": "c",
+        "text": "Enable S3 Transfer Acceleration on the target bucket, and upload the archive with parallel multipart uploads from several on-premises servers.",
+        "note": "Transfer Acceleration improves throughput over long distances, but it cannot exceed the 500 Mbps local link. The upload would still take months."
+      },
+      {
+        "id": "d",
+        "text": "Order an AWS Direct Connect hosted connection with 10 Gbps capacity from a Direct Connect Partner, and run AWS DataSync over the connection.",
+        "note": "A 10 Gbps link could move the data quickly once installed, but the stem states Direct Connect would take several months to provision. It cannot meet the 6-week deadline."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Calculate transfer time first: 900 TB at 500 Mbps is roughly 170 days. When the network cannot meet the deadline, use Snowball Edge devices in parallel for an offline transfer. Online tools such as DataSync and Transfer Acceleration are limited by the link."
+  },
+  {
+    "id": "performant-3.5-12",
+    "domain": "performant",
+    "services": [
+      "AWS Transfer Family",
+      "Amazon S3"
+    ],
+    "text": "A bank receives daily statement files from 40 partner organizations. The partners use existing automated SFTP clients and cannot change their tooling. The bank currently runs an SFTP server on an Amazon EC2 instance that writes to Amazon S3, and patching and scaling the server takes significant effort. Files must land in Amazon S3 so that downstream processing can start.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an AWS Transfer Family SFTP server with an Amazon EFS file system as the storage backend, and create a user for each partner.",
+        "note": "This gives partners a managed SFTP endpoint, but the files land in Amazon EFS rather than Amazon S3, so downstream processing would need an extra copy step."
+      },
+      {
+        "id": "b",
+        "text": "Create an AWS Transfer Family SFTP server with an Amazon S3 bucket as the storage backend, and map each partner's user to its own S3 prefix.",
+        "note": "Transfer Family provides a fully managed, highly available SFTP endpoint that stores files directly in Amazon S3. Partners keep their SFTP clients, and the bank no longer patches or scales servers."
+      },
+      {
+        "id": "c",
+        "text": "Move the SFTP server into an Auto Scaling group behind a Network Load Balancer and mount the S3 bucket on each instance with Mountpoint for Amazon S3.",
+        "note": "This improves availability, but the bank still patches and manages the SFTP servers and the AMI. It does not reduce operational overhead as much as a managed SFTP service."
+      },
+      {
+        "id": "d",
+        "text": "Create AWS Transfer Family SFTP connectors that connect to each partner, and retrieve the daily statement files into the S3 bucket.",
+        "note": "SFTP connectors are outbound clients that connect to remote SFTP servers. The partners run SFTP clients, not servers, so the connectors would have nothing to connect to."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "AWS Transfer Family is the managed SFTP, FTPS, FTP, and AS2 service that stores files directly in Amazon S3 or Amazon EFS. Use a Transfer Family server when external parties push files with their own clients, and SFTP connectors when AWS must pull from or push to partner-hosted servers."
+  },
+  {
+    "id": "performant-3.5-13",
+    "domain": "performant",
+    "services": [
+      "Amazon S3 Transfer Acceleration",
+      "Amazon S3"
+    ],
+    "text": "A company runs a video collaboration application. Editors in Asia, Europe, and South America upload project files of 2 GB to 10 GB to a single Amazon S3 bucket in us-east-1. The editors report slow and inconsistent upload speeds over the public internet. The application must continue to write to the one existing bucket, and the company wants the simplest change to the upload path.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Enable S3 Transfer Acceleration on the bucket. Update the application to use the accelerate endpoint and multipart uploads.",
+        "note": "Transfer Acceleration routes uploads to the nearest edge location and then over the AWS backbone to the bucket. Combined with multipart uploads, it improves long-distance upload speed while writing to the same bucket."
+      },
+      {
+        "id": "b",
+        "text": "Create S3 buckets in Regions close to each editor group. Configure S3 Cross-Region Replication from each bucket to the bucket in us-east-1.",
+        "note": "Regional buckets speed up uploads, but the application would write to several buckets instead of the one existing bucket, and replication adds cost and delay before files reach us-east-1."
+      },
+      {
+        "id": "c",
+        "text": "Deploy AWS DataSync agents on the editors' workstations to transfer the project files to the bucket.",
+        "note": "DataSync agents are deployed as virtual machines or on EC2 to move data from storage systems. They are not a practical upload path for individual editors using an application."
+      },
+      {
+        "id": "d",
+        "text": "Set up an AWS Site-to-Site VPN connection from each editor office to a VPC in us-east-1 and upload through an S3 gateway endpoint.",
+        "note": "A VPN still runs over the public internet from each office to us-east-1, so it does not shorten the long-distance path. S3 gateway endpoints are also reachable only from inside the VPC, not through a VPN connection."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "S3 Transfer Acceleration speeds up long-distance transfers to a single bucket by using CloudFront edge locations and the AWS network. Use it with multipart upload for large files from geographically distant clients."
+  },
+  {
+    "id": "performant-3.5-14",
+    "domain": "performant",
+    "services": [
+      "Amazon OpenSearch Service",
+      "Amazon Data Firehose",
+      "Amazon Athena"
+    ],
+    "text": "A company's operations team wants to search and visualize application logs from 200 Amazon EC2 instances. Engineers must run full-text searches on logs that are less than 1 minute old during incidents and build interactive dashboards. The logs are already published to an Amazon Data Firehose stream. The company wants a managed solution.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure the Firehose stream to deliver the logs to Amazon S3. Use Amazon Athena to search the logs and Amazon Quick Sight for dashboards.",
+        "note": "Athena runs SQL over files in S3. It is not a full-text search engine, and each query scans files, so incident searches are slower than an indexed search service."
+      },
+      {
+        "id": "b",
+        "text": "Configure the Firehose stream to deliver the logs to an Amazon Redshift cluster. Use the Redshift query editor to search the logs.",
+        "note": "Redshift is a columnar data warehouse for SQL analytics. It is not optimized for full-text search and has no built-in interactive log dashboards."
+      },
+      {
+        "id": "c",
+        "text": "Configure the Firehose stream to deliver the logs to Amazon S3. Run an AWS Glue crawler every minute and query the logs with Amazon Redshift Spectrum.",
+        "note": "Crawlers only update the catalog, and Redshift Spectrum runs SQL over S3 files. This provides no full-text indexing or interactive log dashboards."
+      },
+      {
+        "id": "d",
+        "text": "Configure the Firehose stream to deliver the logs to an Amazon OpenSearch Service domain. Use OpenSearch Dashboards to search and visualize the logs.",
+        "note": "OpenSearch Service indexes documents for fast full-text search and includes OpenSearch Dashboards for visualization. Firehose delivers to it natively with short buffering, so logs are searchable within about a minute."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Amazon OpenSearch Service is the managed choice for near real-time log analytics and full-text search with dashboards. Athena and Redshift run SQL over structured data and are better for scheduled or ad hoc analytics than for interactive log search."
+  },
+  {
+    "id": "performant-3.5-15",
+    "domain": "performant",
+    "services": [
+      "AWS Glue",
+      "AWS Lambda",
+      "Amazon EMR"
+    ],
+    "text": "A company receives thousands of new CSV files in an Amazon S3 bucket every day. Each night, a transformation must join the new files with reference data, clean the records, and write Parquet output. The nightly job takes about 2 hours to process one day of data. The job must process only the files that arrived since the previous run. The company wants a serverless solution.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Invoke an AWS Lambda function on a nightly Amazon EventBridge schedule to read the new files, perform the join, and write Parquet to Amazon S3.",
+        "note": "Lambda is serverless, but a function can run for at most 15 minutes. A 2-hour transformation cannot run in a single Lambda invocation."
+      },
+      {
+        "id": "b",
+        "text": "Run a persistent Amazon EMR cluster with Apache Spark. Schedule a nightly step that lists the bucket and processes files whose timestamps are newer than the last run.",
+        "note": "EMR on EC2 can run the job, but a persistent cluster must be managed and runs all day. It is not serverless, and tracking processed files requires custom logic."
+      },
+      {
+        "id": "c",
+        "text": "Create an AWS Glue ETL job with job bookmarks enabled. Start the job with a nightly AWS Glue trigger.",
+        "note": "AWS Glue runs serverless Spark jobs that can run for many hours. Job bookmarks track which S3 files previous runs processed, so each run reads only the new files."
+      },
+      {
+        "id": "d",
+        "text": "Run an AWS Glue crawler on a nightly schedule to add the new files to the Data Catalog and convert them to Parquet.",
+        "note": "A Glue crawler infers schemas and updates the Data Catalog. It does not transform data, join it with reference data, or write Parquet output."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Glue ETL jobs are serverless Spark, and job bookmarks provide built-in incremental processing of new S3 data. Remember the split: crawlers catalog, ETL jobs transform, and Lambda cannot run past 15 minutes."
+  },
+  {
+    "id": "performant-3.5-16",
+    "domain": "performant",
+    "services": [
+      "Amazon Kinesis Data Streams"
+    ],
+    "text": "A sports streaming company ingests viewer interaction events into an Amazon Kinesis Data Streams stream in provisioned mode. Traffic is unpredictable: during popular broadcasts it grows to several times the normal rate over the course of an hour and then falls back. During these periods, producers receive ProvisionedThroughputExceededException errors. The company wants to stop the throttling without managing shard counts.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Switch the stream to on-demand capacity mode.",
+        "note": "In on-demand mode, Kinesis Data Streams automatically scales write and read capacity with traffic and the company does not manage shards. This removes throttling during spikes with no ongoing operational work."
+      },
+      {
+        "id": "b",
+        "text": "Create an AWS Lambda function that monitors Amazon CloudWatch metrics and calls UpdateShardCount when incoming records exceed a threshold.",
+        "note": "This can scale the stream, but the company must build and maintain the scaling logic and still manages shard counts. Resharding also has limits on how often and how far it can scale at once."
+      },
+      {
+        "id": "c",
+        "text": "Keep provisioned mode and increase the shard count to handle the peak event load at all times.",
+        "note": "Enough shards for the highest observed peak might stop throttling, but the company would still manage shard counts as traffic changes and would pay for peak capacity most of the time."
+      },
+      {
+        "id": "d",
+        "text": "Enable enhanced fan-out for every consumer application of the stream.",
+        "note": "Enhanced fan-out gives each consumer dedicated read throughput. It does not increase write capacity, so producers would still be throttled."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Kinesis Data Streams on-demand mode handles unpredictable or spiky traffic without shard management. Provisioned mode suits predictable traffic; enhanced fan-out addresses read contention, not write throttling."
+  }
+]

@@ -1,0 +1,1270 @@
+[
+  {
+    "id": "secure-1.1-01",
+    "domain": "secure",
+    "services": [
+      "IAM",
+      "Amazon EC2",
+      "Amazon S3"
+    ],
+    "text": "A company runs a reporting application on Amazon EC2 instances in an Auto Scaling group. The application reads input files from one Amazon S3 bucket and writes reports to a second bucket. The application authenticates with an IAM user access key pair that is stored in a configuration file on the AMI.\n\nA security audit flagged the long-term credentials. The company wants the credentials that the application uses to rotate automatically, with no extra steps when the Auto Scaling group launches new instances.\n\nWhich solution will meet these requirements MOST securely?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Store the access key pair in AWS Secrets Manager and turn on automatic rotation. Update the application to retrieve the keys from Secrets Manager at startup.",
+        "note": "Secrets Manager can rotate secrets, but the application still uses long-term IAM user keys, and rotating IAM user keys requires a custom rotation function. An IAM role removes the long-term keys entirely, which is more secure."
+      },
+      {
+        "id": "b",
+        "text": "Store the access key pair as a SecureString parameter in AWS Systems Manager Parameter Store. Allow the application to read the parameter at startup.",
+        "note": "Parameter Store encrypts the value but does not rotate it, so the long-term keys remain static. This solution does not meet the automatic rotation requirement."
+      },
+      {
+        "id": "c",
+        "text": "Create an IAM role that allows reads from the input bucket and writes to the output bucket. Attach the role to the launch template as an instance profile.",
+        "note": "An instance profile delivers temporary credentials from AWS STS through the instance metadata service. AWS rotates the credentials automatically, and every instance that the Auto Scaling group launches receives them with no extra steps."
+      },
+      {
+        "id": "d",
+        "text": "Create an IAM role that allows reads from the input bucket and writes to the output bucket. Allow an IAM user to assume the role, and store that user's access keys on the AMI.",
+        "note": "The role issues temporary credentials, but the instances still need long-term IAM user keys to call AssumeRole. The audit finding about long-term credentials on the AMI remains."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Applications on EC2 should get permissions from an IAM role attached through an instance profile. The SDK picks up temporary credentials from instance metadata, and AWS rotates them automatically. Storing access keys anywhere, even in Secrets Manager, is less secure than having no long-term keys at all."
+  },
+  {
+    "id": "secure-1.1-02",
+    "domain": "secure",
+    "services": [
+      "IAM"
+    ],
+    "text": "A company's platform team wants application developers to create IAM roles for their own AWS Lambda functions without waiting for the platform team. The security team is concerned that a developer could create a role with more permissions than the developer has and then use the role to escalate privileges.\n\nThe platform team has written a managed policy named DevBoundary that defines the maximum permissions that any developer-created role may have.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Allow developers to create roles only when the request sets DevBoundary as the permissions boundary. Deny developers permission to change DevBoundary or to remove boundaries from roles.",
+        "note": "A permissions boundary caps the effective permissions of the roles that developers create, whatever policies they attach. The iam:PermissionsBoundary condition key forces the boundary on every new role, and the deny statements stop developers from weakening it."
+      },
+      {
+        "id": "b",
+        "text": "Allow developers to create roles and attach policies to them. Attach DevBoundary to the developers' IAM group as an identity-based policy that limits what developers can do.",
+        "note": "Attaching DevBoundary to the developers limits the developers, not the roles they create. A developer could still attach AdministratorAccess to a new role and pass it to a Lambda function, so privilege escalation remains possible."
+      },
+      {
+        "id": "c",
+        "text": "Create an SCP that denies iam:CreateRole for every principal except the platform team. Attach the SCP to the organization root.",
+        "note": "This SCP prevents privilege escalation by blocking role creation entirely. It fails the requirement that developers create their own roles without waiting for the platform team."
+      },
+      {
+        "id": "d",
+        "text": "Allow developers to create roles and attach policies to them. Deploy an AWS Config rule that flags roles with permissions broader than DevBoundary and notifies the platform team.",
+        "note": "AWS Config is a detective control. The over-privileged role exists, and can be used, before anyone is notified, so this does not prevent the escalation."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Delegating role creation safely is the classic use case for permissions boundaries: require the boundary on every role that developers create, and protect the boundary from being changed. Remember that a boundary sets maximum permissions and grants nothing on its own, and that detective controls such as AWS Config do not prevent escalation."
+  },
+  {
+    "id": "secure-1.1-03",
+    "domain": "secure",
+    "services": [
+      "AWS Organizations",
+      "IAM"
+    ],
+    "text": "A company uses AWS Organizations to manage 60 member accounts. Because of data residency regulations, the company must prevent all users in the member accounts, including account administrators, from creating resources outside the eu-central-1 and eu-west-1 Regions. Users must still be able to use global services such as IAM and Amazon CloudFront.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an IAM policy that denies actions when aws:RequestedRegion is not one of the approved Regions. Use AWS CloudFormation StackSets to attach the policy to every IAM user and role in each account.",
+        "note": "The policy logic works, but account administrators can detach an IAM policy from themselves, and every new user or role needs the policy. This does not reliably restrict administrators and adds overhead."
+      },
+      {
+        "id": "b",
+        "text": "Deploy an AWS Config rule in every account that detects resources in unapproved Regions. Configure automatic remediation that deletes the resources.",
+        "note": "AWS Config detects resources after they are created. Data could already reside in a forbidden Region before remediation runs, so this does not prevent creation."
+      },
+      {
+        "id": "c",
+        "text": "Create a permissions boundary that allows actions only in the approved Regions. Require account administrators to attach the boundary to every new IAM role.",
+        "note": "The boundary depends on administrators applying it, and it does not restrict the administrators themselves. The requirement explicitly includes account administrators."
+      },
+      {
+        "id": "d",
+        "text": "Create an SCP that denies all actions, except actions of global services, when aws:RequestedRegion is not one of the approved Regions. Attach the SCP to the organization root.",
+        "note": "An SCP applies to every principal in the member accounts, including administrators and the root user, and cannot be removed from within the account. Exempting global services keeps IAM and CloudFront usable. One policy covers all 60 accounts and any new ones."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "SCPs are the preventive guardrail for an entire organization: they limit what every principal in a member account can do, even administrators. A Region-deny SCP uses aws:RequestedRegion and exempts global services. IAM policies and permissions boundaries can be changed by account administrators, and AWS Config only detects."
+  },
+  {
+    "id": "secure-1.1-04",
+    "domain": "secure",
+    "services": [
+      "AWS Organizations",
+      "IAM",
+      "Amazon Athena"
+    ],
+    "text": "A company uses AWS Organizations. The Analytics OU has the default FullAWSAccess SCP removed and an SCP attached that allows only Amazon S3, Amazon Athena, and AWS Glue actions.\n\nAn administrator creates a new IAM role for a data analyst in a member account in the Analytics OU. No policies are attached to the role. When the analyst assumes the role and runs an Athena query, the request is denied.\n\nWhat should a solutions architect do to give the analyst the required access while following the principle of least privilege?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Update the SCP that is attached to the Analytics OU so that it explicitly allows the Athena, Glue, and S3 actions for the analyst role's ARN only.",
+        "note": "SCPs only define the maximum available permissions for an account. They never grant permissions to a principal, so the role still has no permissions after this change."
+      },
+      {
+        "id": "b",
+        "text": "Attach an identity-based policy to the role that allows only the Athena, Glue, and S3 actions that the analyst needs on the required resources.",
+        "note": "The role has no identity-based permissions, so every request is implicitly denied. A scoped identity-based policy grants exactly what the analyst needs, and the SCP already allows these services."
+      },
+      {
+        "id": "c",
+        "text": "Reattach the FullAWSAccess SCP to the Analytics OU so that the member account is no longer restricted by the allow-list SCP.",
+        "note": "This weakens the OU guardrail and still grants nothing to the role. The request remains denied because the role has no identity-based permissions."
+      },
+      {
+        "id": "d",
+        "text": "Attach a permissions boundary to the role that allows only the Athena, Glue, and S3 actions that the analyst needs on the required resources.",
+        "note": "A permissions boundary sets the maximum permissions for a role but does not grant any. Without an identity-based policy, the role's requests are still denied."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Effective permissions are the intersection of what the SCP allows, what any permissions boundary allows, and what an identity-based (or resource-based) policy grants. SCPs and boundaries only set limits. Something must still grant the action, and the least-privilege way is a scoped identity-based policy."
+  },
+  {
+    "id": "secure-1.1-05",
+    "domain": "secure",
+    "services": [
+      "AWS Organizations",
+      "AWS CloudTrail"
+    ],
+    "text": "A company has an organization in AWS Organizations. The company attached an SCP to the organization root that denies the deletion of AWS CloudTrail trails. Several legacy production workloads still run in the management account.\n\nDuring an audit, the security team discovers that an engineer deleted a trail in the management account. The security team wants the guardrail to apply in every account that runs workloads.\n\nWhich solution will meet these requirements and follow AWS best practices?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Attach the SCP directly to the management account in addition to the organization root so that it applies to every account.",
+        "note": "SCPs never affect users or roles in the management account, regardless of where the SCP is attached. The engineer could still delete the trail."
+      },
+      {
+        "id": "b",
+        "text": "Attach a permissions boundary that denies cloudtrail:DeleteTrail to every IAM user and role in the management account, including administrator roles.",
+        "note": "A boundary restricts only the roles it is attached to. Administrators in the management account can remove it, and the root user is not affected. This also leaves workloads running in the management account, which AWS advises against."
+      },
+      {
+        "id": "c",
+        "text": "Migrate the workloads from the management account to member accounts. Limit access to the management account to a small group of administrators.",
+        "note": "SCPs do not apply to the management account, so AWS recommends running no workloads there. After the migration, the root SCP guards every account that runs workloads, and the management account is used only for organization administration."
+      },
+      {
+        "id": "d",
+        "text": "Create an organization trail in the management account so that users in member accounts cannot delete the trail.",
+        "note": "An organization trail cannot be modified from member accounts, but users in the management account can still delete it. The workloads and the gap in the guardrail both remain in the management account."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "SCPs apply only to member accounts and never restrict the management account, even when attached directly to it. AWS best practice is to keep workloads out of the management account so that organization guardrails cover all of them."
+  },
+  {
+    "id": "secure-1.1-06",
+    "domain": "secure",
+    "services": [
+      "Amazon S3",
+      "IAM"
+    ],
+    "text": "A company stores a data lake in an Amazon S3 bucket in Account A. An analytics application runs on Amazon EC2 instances in Account B and uses an instance profile with an IAM role named AnalyticsRole. The application must read objects from one prefix of the bucket.\n\nThe bucket uses SSE-S3 encryption, and S3 Object Ownership is set to bucket owner enforced.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an IAM role in Account A that allows s3:GetObject on the prefix. Attach the role to the EC2 instances in Account B as an instance profile.",
+        "note": "An instance profile can contain only a role from the same account as the instance. A role in Account A cannot be attached to instances in Account B."
+      },
+      {
+        "id": "b",
+        "text": "Add a statement to the bucket policy in Account A that allows s3:GetObject on the prefix for the AnalyticsRole ARN.",
+        "note": "For cross-account access, the resource owner must grant access. The bucket policy names the role in Account B as a principal and limits access to the prefix."
+      },
+      {
+        "id": "c",
+        "text": "Add an object ACL grant that gives read access to the canonical user ID of Account B.",
+        "note": "The bucket owner enforced setting disables ACLs on the bucket and its objects. Access must be granted with policies instead."
+      },
+      {
+        "id": "d",
+        "text": "Create a resource share in AWS Resource Access Manager (AWS RAM) that shares the bucket prefix with Account B.",
+        "note": "AWS RAM does not support sharing S3 buckets or prefixes. Cross-account S3 access uses bucket policies, access points, or roles."
+      },
+      {
+        "id": "e",
+        "text": "Add a statement to the identity-based policy of AnalyticsRole that allows s3:GetObject on the prefix in the Account A bucket.",
+        "note": "In cross-account access, the principal's own account must also allow the action. The role needs an identity-based policy for the bucket in addition to the bucket policy grant."
+      }
+    ],
+    "correct": [
+      "b",
+      "e"
+    ],
+    "explanation": "Cross-account access with a resource-based policy needs two allows: the resource owner's policy (the bucket policy) must grant the external principal, and the principal's account must grant the action in an identity-based policy. With ACLs disabled by bucket owner enforced, policies are the only grant mechanism."
+  },
+  {
+    "id": "secure-1.1-07",
+    "domain": "secure",
+    "services": [
+      "AWS KMS",
+      "Amazon S3",
+      "IAM"
+    ],
+    "text": "A company stores invoices in an Amazon S3 bucket in a finance account. The objects are encrypted with SSE-KMS by using a customer managed key in the finance account. An application in a reporting account uses an IAM role that is granted s3:GetObject by the bucket policy and by the role's identity-based policy.\n\nRequests from the application fail with an AccessDenied error. Compliance rules require the company to keep using the customer managed key.\n\nWhich solution will resolve the error?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add a statement to the key policy that allows the reporting role to use kms:Decrypt. Add kms:Decrypt on the key ARN to the role's identity-based policy.",
+        "note": "A KMS key in another account requires an allow in both the key policy, which is the key's resource-based policy, and the caller's identity-based policy. With both in place, Amazon S3 can decrypt the objects for the role."
+      },
+      {
+        "id": "b",
+        "text": "Add a statement to the bucket policy in the finance account that allows the reporting role to use kms:Decrypt on the customer managed key.",
+        "note": "A bucket policy controls access to S3 resources only. It cannot grant permissions on a KMS key, which is controlled by its key policy."
+      },
+      {
+        "id": "c",
+        "text": "Re-encrypt the objects with the AWS managed key for Amazon S3 (aws/s3). Grant the reporting role in the reporting account permission to use that key.",
+        "note": "The key policy of an AWS managed key cannot be changed, so the key cannot be used across accounts. This also violates the requirement to keep the customer managed key."
+      },
+      {
+        "id": "d",
+        "text": "Add kms:Decrypt on the key ARN to the reporting role's identity-based policy. Keep the existing key policy in the finance account unchanged.",
+        "note": "For cross-account use, the identity-based policy alone is not enough. The key policy in the finance account must also allow the external principal, or KMS denies the request."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "SSE-KMS objects need both S3 permissions and KMS permissions. Cross-account use of a customer managed key requires an allow in the key policy of the owning account and in the caller's identity-based policy. AWS managed keys cannot be shared across accounts because their key policies are fixed."
+  },
+  {
+    "id": "secure-1.1-08",
+    "domain": "secure",
+    "services": [
+      "Amazon Cognito",
+      "Amazon S3",
+      "IAM"
+    ],
+    "text": "A company is building a mobile app. Users sign up with an email address and password and then upload photos directly to an Amazon S3 bucket. Each user must be able to read and write only objects under a prefix that matches that user's own identity.\n\nThe company does not want to run backend servers to broker uploads and does not want any AWS credentials embedded in the app.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Amazon Cognito user pool to handle user sign-up and sign-in.",
+        "note": "A Cognito user pool is a managed user directory that handles sign-up and sign-in with email and password and issues tokens to the app."
+      },
+      {
+        "id": "b",
+        "text": "Create an IAM user for each app user at sign-up. Return the IAM user's access keys to the app.",
+        "note": "This places long-term AWS credentials on the device, which the requirements forbid. IAM is not designed to hold app end users."
+      },
+      {
+        "id": "c",
+        "text": "Create an Amazon Cognito identity pool that trusts the user pool. Assign an authenticated role whose policy limits S3 access to a prefix built from the ${cognito-identity.amazonaws.com:sub} policy variable.",
+        "note": "An identity pool exchanges user pool tokens for temporary AWS credentials. The policy variable resolves to each user's identity ID, so each user can access only that user's prefix."
+      },
+      {
+        "id": "d",
+        "text": "Configure the S3 bucket policy to accept ID tokens issued by the user pool and to grant each user access to the prefix that matches the token's sub claim.",
+        "note": "Amazon S3 authorizes requests signed with AWS credentials. It cannot validate Cognito JWTs, so the tokens must first be exchanged for AWS credentials through an identity pool."
+      },
+      {
+        "id": "e",
+        "text": "Create an Amazon Cognito identity pool with unauthenticated access turned on. Assign a role that allows s3:PutObject and s3:GetObject on the bucket.",
+        "note": "Unauthenticated identities do not require sign-in, and the role grants access to the whole bucket. Users would not be limited to their own prefix."
+      }
+    ],
+    "correct": [
+      "a",
+      "c"
+    ],
+    "explanation": "User pools authenticate users (who you are); identity pools authorize access to AWS resources by issuing temporary credentials (what you can call in AWS). Combining them with a policy variable such as ${cognito-identity.amazonaws.com:sub} gives per-user S3 prefixes without servers or embedded keys."
+  },
+  {
+    "id": "secure-1.1-09",
+    "domain": "secure",
+    "services": [
+      "Amazon Cognito",
+      "Amazon API Gateway",
+      "AWS Lambda"
+    ],
+    "text": "A company runs a web application whose backend is an Amazon API Gateway REST API that invokes AWS Lambda functions. Customers must be able to sign up with an email address and password or sign in with their Google accounts.\n\nThe company wants AWS to manage password policies, account recovery, and token issuance. Only signed-in customers may call the API.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Amazon Cognito identity pool with Google as an identity provider. Configure the API methods to use IAM authorization.",
+        "note": "An identity pool issues AWS credentials for federated identities, but it is not a user directory. It provides no email and password sign-up, password policies, or account recovery."
+      },
+      {
+        "id": "b",
+        "text": "Store customer credentials in an Amazon DynamoDB table. Create a Lambda authorizer that validates passwords and Google tokens on every request to the API.",
+        "note": "This works, but the company would build and operate its own password storage, recovery, and token logic. That is far more overhead than a managed user directory."
+      },
+      {
+        "id": "c",
+        "text": "Configure AWS IAM Identity Center with Google Workspace as an external identity provider. Configure the API methods to use IAM authorization.",
+        "note": "IAM Identity Center provides workforce access to AWS accounts and applications. It is not designed for customer sign-up to a public web application, and customers without Google accounts could not sign up."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon Cognito user pool with Google configured as a social identity provider. Configure a Cognito user pool authorizer on the API methods.",
+        "note": "A user pool provides managed sign-up, password policies, account recovery, and federation with Google. API Gateway validates the user pool tokens natively, so no custom code is needed."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "For customer sign-up and sign-in, including social providers, use a Cognito user pool, and protect a REST API with a Cognito user pool authorizer. Identity pools exchange identities for AWS credentials but do not store users. IAM Identity Center serves the workforce, not customers."
+  },
+  {
+    "id": "secure-1.1-10",
+    "domain": "secure",
+    "services": [
+      "AWS IAM Identity Center",
+      "AWS Organizations"
+    ],
+    "text": "A company has 40 AWS accounts in AWS Organizations. Employees authenticate with Microsoft Entra ID. Each AWS account has its own IAM users, so employees keep a separate password for every account.\n\nThe company wants employees to use their existing Entra ID credentials to sign in to any account they are authorized for. Access must be managed centrally, and disabling a user in Entra ID must remove that user's AWS access automatically.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an IAM SAML identity provider for Entra ID in each account. Create IAM roles in each account that trust the provider, and map Entra ID groups to the roles.",
+        "note": "SAML federation per account works, but the company must create and maintain identity providers and roles in all 40 accounts. Access is not managed from one place."
+      },
+      {
+        "id": "b",
+        "text": "Enable IAM Identity Center for the organization. Connect Entra ID as the external identity provider with SAML and automatic SCIM provisioning, and assign groups to accounts with permission sets.",
+        "note": "IAM Identity Center gives single sign-on to every account in the organization from one place. SCIM keeps users and groups synchronized, so disabling a user in Entra ID removes access, and permission sets are provisioned to accounts automatically."
+      },
+      {
+        "id": "c",
+        "text": "Create IAM users for all employees in a central identity account. Create roles in each member account that trust the identity account, and synchronize passwords from Entra ID with a scheduled script.",
+        "note": "This keeps IAM users with their own passwords and requires custom synchronization. Employees do not sign in with their Entra ID credentials, and deprovisioning depends on the script."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon Cognito user pool that is federated with Entra ID. Use a Cognito identity pool to issue role credentials for each account.",
+        "note": "Cognito is designed for customer identities in applications. It does not provide workforce single sign-on to the AWS Management Console across accounts."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "IAM Identity Center is the recommended way to give a workforce single sign-on across the accounts in an organization. Connect an external IdP with SAML and SCIM, and assign access with permission sets. Per-account IAM SAML federation also works but multiplies the operational work."
+  },
+  {
+    "id": "secure-1.1-11",
+    "domain": "secure",
+    "services": [
+      "AWS IAM Identity Center",
+      "AWS Directory Service"
+    ],
+    "text": "A company has 15 AWS accounts in AWS Organizations and a self-managed Active Directory in its on-premises data center. The data center connects to AWS through AWS Direct Connect.\n\nThe company wants employees to sign in to the AWS accounts with their existing Active Directory credentials and to manage access by AD group. The company does not want to copy the directory to AWS or to operate additional domain controllers.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Deploy AD Connector in a VPC and point it to the on-premises domain controllers. Enable IAM Identity Center and choose the AD Connector directory as the identity source.",
+        "note": "AD Connector is a proxy that forwards authentication requests to the on-premises directory without caching or replicating it. IAM Identity Center can use it as an identity source and assign permission sets to AD groups."
+      },
+      {
+        "id": "b",
+        "text": "Deploy AWS Managed Microsoft AD and create a two-way forest trust with the on-premises domain. Choose AWS Managed Microsoft AD as the IAM Identity Center identity source.",
+        "note": "This works, but it adds a second directory with its own domain controllers in AWS and a trust to maintain. The company wanted no additional domain controllers."
+      },
+      {
+        "id": "c",
+        "text": "Deploy Simple AD and import the users and groups from the on-premises directory. Choose Simple AD as the IAM Identity Center identity source.",
+        "note": "Simple AD is a standalone directory that cannot connect to or trust an on-premises domain, so users and passwords would have to be copied. IAM Identity Center also does not support Simple AD as an identity source."
+      },
+      {
+        "id": "d",
+        "text": "Use the IAM Identity Center directory as the identity source. Create users and groups in it that match the on-premises Active Directory.",
+        "note": "Users would have separate Identity Center passwords, not their existing AD credentials, and the company would maintain the users and groups twice."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "To use an existing on-premises AD with AWS without replicating it, use AD Connector as a proxy. AWS Managed Microsoft AD with a trust is the choice when AWS workloads need a real directory in AWS, at the cost of running extra domain controllers. Simple AD cannot integrate with on-premises AD."
+  },
+  {
+    "id": "secure-1.1-12",
+    "domain": "secure",
+    "services": [
+      "IAM",
+      "AWS STS",
+      "Amazon EC2"
+    ],
+    "text": "A small company uses a single AWS account that is not part of an organization. Operators sign in to the console as IAM users and also run AWS CLI commands with access keys.\n\nThe company wants to require MFA before any operator can stop or terminate Amazon EC2 instances, whether the request comes from the console or the CLI. Other actions must keep working without MFA.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Assign a virtual MFA device to every operator's IAM user so that operators must enter an MFA code when they sign in.",
+        "note": "An assigned MFA device is enforced at console sign-in, but CLI requests signed with access keys do not require MFA. It also affects every console action, not only stopping and terminating instances."
+      },
+      {
+        "id": "b",
+        "text": "Create an SCP that denies ec2:StopInstances and ec2:TerminateInstances when aws:MultiFactorAuthPresent is false or absent. Attach the SCP to the account.",
+        "note": "The condition is correct, but SCPs require AWS Organizations. The account is not part of an organization, so an SCP cannot be applied."
+      },
+      {
+        "id": "c",
+        "text": "Attach a group policy that denies EC2 stop and terminate actions when aws:MultiFactorAuthPresent is false or absent. Have CLI users call sts:GetSessionToken with an MFA code.",
+        "note": "The deny statement with the MFA condition key blocks only the two actions unless the request was authenticated with MFA. Console sessions with MFA and CLI sessions from GetSessionToken with an MFA code both carry the key, so both paths are covered."
+      },
+      {
+        "id": "d",
+        "text": "Move the operators from IAM users to IAM Identity Center users, and configure Identity Center to require MFA every time an operator signs in.",
+        "note": "A standalone account can use only an account instance of IAM Identity Center, which cannot manage access to AWS accounts. Identity Center MFA would also apply to every sign-in, not only to stopping and terminating instances."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "To require MFA for specific actions, use an IAM policy with the aws:MultiFactorAuthPresent condition key (BoolIfExists, so that requests made with long-term access keys are also denied). CLI users get MFA-authenticated temporary credentials from sts:GetSessionToken. Assigning an MFA device protects console sign-in only."
+  },
+  {
+    "id": "secure-1.1-13",
+    "domain": "secure",
+    "services": [
+      "IAM",
+      "AWS Organizations"
+    ],
+    "text": "A startup created an AWS account and later made it the management account of a new organization in AWS Organizations. The founders use the root user for daily administration. The root user also has an access key that a deployment script uses.\n\nA security review asks the company to protect the root user according to AWS best practices.\n\nWhich combination of steps should the company take? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Keep the root user access key for the script. Attach an IAM policy to the root user that limits it to the actions that the script needs.",
+        "note": "IAM policies cannot be attached to the root user, so the key keeps unrestricted access to the account. AWS recommends that the root user have no access keys at all."
+      },
+      {
+        "id": "b",
+        "text": "Delete the root user access key. Update the deployment script to use an IAM role with only the permissions the script needs.",
+        "note": "Removing the root access key eliminates the most dangerous long-term credential in the account. A role gives the script temporary, least-privilege credentials."
+      },
+      {
+        "id": "c",
+        "text": "Attach an SCP to the organization root that denies all actions by the root user.",
+        "note": "SCPs do not apply to the management account, so this SCP would not restrict the root user of this account."
+      },
+      {
+        "id": "d",
+        "text": "Enable MFA on the root user. Use IAM Identity Center users for daily administration, and use the root user only for tasks that require it.",
+        "note": "MFA protects the root sign-in. Individual Identity Center users for daily work mean the most privileged credential is used only for the few tasks that require it."
+      },
+      {
+        "id": "e",
+        "text": "Enable centralized root access management in IAM. Delete the root user credentials of the management account, and run root tasks as privileged sessions.",
+        "note": "Centralized root access management removes root credentials only from member accounts. It cannot delete the root credentials of the management account, which must be protected directly."
+      }
+    ],
+    "correct": [
+      "b",
+      "d"
+    ],
+    "explanation": "Root user best practice: no access keys, MFA on the root sign-in, and individual non-root identities for everyday work. Neither SCPs nor centralized root access management apply to the management account, so its root user must be secured directly."
+  },
+  {
+    "id": "secure-1.1-14",
+    "domain": "secure",
+    "services": [
+      "IAM",
+      "AWS Organizations"
+    ],
+    "text": "A company has 200 member accounts in AWS Organizations, and an automated account vending process creates more each month. Root user passwords were set for many member accounts when the accounts were created.\n\nThe security team wants to remove long-term root user credentials from all member accounts and prevent anyone from recovering them. The team must still be able to perform the rare tasks that require root, such as deleting a misconfigured S3 bucket policy that denies all principals.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Enable a hardware MFA device on the root user of every member account, including new accounts. Store all of the devices in a locked safe in the security team's office.",
+        "note": "MFA protects the root credentials but does not remove them, and the team must register and store a device for each of 200+ accounts, including every new one."
+      },
+      {
+        "id": "b",
+        "text": "Attach an SCP to the organization root that denies all actions by the root user in every member account of the organization.",
+        "note": "An SCP limits what the member account root users can do, but the long-term root credentials still exist and can still be recovered through the password reset process."
+      },
+      {
+        "id": "c",
+        "text": "Run a script that resets each member account's root password to a random value and then discards the value.",
+        "note": "The root user can still recover access through the email-based password reset. The script must also be rerun for every new account."
+      },
+      {
+        "id": "d",
+        "text": "Enable centralized root access management in IAM. Delete the member accounts' root credentials, and run privileged root tasks from the management account.",
+        "note": "Centralized root access lets the security team remove root credentials from member accounts, blocks recovery, and creates new accounts without root credentials. Root-only tasks run as short-lived privileged sessions that are started centrally."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Centralized root access management in IAM, used with AWS Organizations, removes member account root credentials at scale and replaces them with short-term privileged root sessions started from the management account or a delegated administrator. SCPs restrict root actions but leave the credentials in place."
+  },
+  {
+    "id": "secure-1.1-15",
+    "domain": "secure",
+    "services": [
+      "IAM",
+      "AWS STS"
+    ],
+    "text": "A company subscribes to a third-party SaaS cost-monitoring service. The vendor needs read-only access to the company's billing data and Amazon EC2 metadata. The vendor serves thousands of customers from its own AWS account and asks each customer for the ARN of an IAM role that the vendor will assume.\n\nThe company wants to ensure that another vendor customer cannot trick the vendor into accessing the company's account by supplying the company's role ARN.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a read-only role whose trust policy allows the vendor's account to assume it only with the external ID that the vendor assigned to the company.",
+        "note": "The external ID is a value that the vendor generates for each customer and sends with every AssumeRole call. A request made on behalf of another customer carries a different external ID and fails, which prevents the confused deputy problem."
+      },
+      {
+        "id": "b",
+        "text": "Create a read-only role whose trust policy allows the vendor's AWS account to assume it. Provide the role ARN to the vendor.",
+        "note": "This grants least-privilege cross-account access, but any request from the vendor's account succeeds, including one made for another customer who supplied this role ARN. This is the confused deputy problem."
+      },
+      {
+        "id": "c",
+        "text": "Create an IAM user with read-only permissions. Give the user's access keys to the vendor, and rotate the keys every 90 days through a scheduled process.",
+        "note": "This shares long-term credentials with a third party, which AWS discourages. Cross-account access should use a role."
+      },
+      {
+        "id": "d",
+        "text": "Create a read-only role whose trust policy allows the vendor's account to assume it only when aws:MultiFactorAuthPresent is true.",
+        "note": "The vendor's automated service cannot provide MFA for every call, and MFA does not tell the company which customer the vendor is acting for. It does not address the confused deputy problem."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "When a third party assumes roles in many customers' accounts, require an external ID in the trust policy to prevent the confused deputy problem. Roles, not shared IAM user keys, are the correct mechanism for cross-account access."
+  },
+  {
+    "id": "secure-1.1-16",
+    "domain": "secure",
+    "services": [
+      "IAM Roles Anywhere",
+      "Amazon S3"
+    ],
+    "text": "A company runs a batch application on servers in its on-premises data center. The application uploads results to Amazon S3 by using an IAM user access key that has not been rotated in 2 years. The company already runs a private certificate authority (CA) that issues X.509 certificates to its servers.\n\nThe company wants the application to use short-lived AWS credentials without storing long-term AWS secrets on the servers.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Store the IAM user access key in AWS Secrets Manager. Configure the application to retrieve the key from Secrets Manager at runtime.",
+        "note": "The servers still need AWS credentials to call Secrets Manager, and the retrieved key is still a long-term IAM user key. Neither requirement is met."
+      },
+      {
+        "id": "b",
+        "text": "Configure IAM Roles Anywhere with the company's CA as a trust anchor. Have the application exchange its server certificate for temporary role credentials.",
+        "note": "IAM Roles Anywhere lets workloads outside AWS exchange an X.509 certificate from a trusted CA for temporary role credentials. No long-term AWS secret is stored on the servers."
+      },
+      {
+        "id": "c",
+        "text": "Configure IAM Identity Center in the account. Have the application sign in as a dedicated Identity Center user to get temporary credentials for a permission set.",
+        "note": "IAM Identity Center is designed for interactive human sign-in. A service user would need a stored password and MFA, which is a long-term secret on the servers."
+      },
+      {
+        "id": "d",
+        "text": "Rotate the IAM user access key every 30 days with a scheduled script. Store the key encrypted on the servers.",
+        "note": "Frequent rotation reduces risk, but the key is still a long-term AWS secret stored on the servers."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "IAM Roles Anywhere extends IAM roles to servers outside AWS: a certificate from a registered trust anchor is exchanged for temporary STS credentials. Remember the pairing: instance profiles for EC2, Roles Anywhere for on-premises workloads that have certificates, IAM Identity Center for people."
+  },
+  {
+    "id": "secure-1.1-17",
+    "domain": "secure",
+    "services": [
+      "AWS Lambda",
+      "Amazon S3",
+      "IAM"
+    ],
+    "text": "A developer configures an S3 event notification on a bucket to invoke an AWS Lambda function when objects are created. The bucket and the function are in the same account. The function's execution role already allows reads from the bucket.\n\nWhen the developer saves the notification configuration, the request fails with an error that the destination configuration cannot be validated.\n\nWhat should a solutions architect do to resolve the issue while following the principle of least privilege?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add lambda:InvokeFunction for the function to the function's execution role.",
+        "note": "The execution role defines what the function can do when it runs. It does not control who can invoke the function, so Amazon S3 is still not allowed to call it."
+      },
+      {
+        "id": "b",
+        "text": "Add a statement to the bucket policy that allows the s3.amazonaws.com service principal to perform lambda:InvokeFunction on the function.",
+        "note": "A bucket policy controls access to the bucket and its objects. It cannot grant permission to invoke a Lambda function."
+      },
+      {
+        "id": "c",
+        "text": "Add a statement to the function's resource-based policy that allows the s3.amazonaws.com principal to invoke it from any bucket in any account.",
+        "note": "This fixes the error, but any bucket in any account could configure notifications that invoke the function. It is broader than necessary."
+      },
+      {
+        "id": "d",
+        "text": "Add a statement to the function's resource-based policy that allows the s3.amazonaws.com principal to invoke it, conditioned on the bucket ARN and account ID.",
+        "note": "Amazon S3 needs permission in the function's resource-based policy to invoke it. The aws:SourceArn and aws:SourceAccount conditions restrict the permission to this one bucket in this account."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Push-style integrations such as S3 event notifications need permission in the Lambda function's resource-based policy, not in its execution role. Scope service principal grants with aws:SourceArn and aws:SourceAccount to keep least privilege and prevent the confused deputy problem."
+  },
+  {
+    "id": "secure-1.1-18",
+    "domain": "secure",
+    "services": [
+      "IAM",
+      "Amazon EC2"
+    ],
+    "text": "A company has 30 development teams that share one AWS account. Developers must be able to start, stop, and reboot only the Amazon EC2 instances that belong to their own team. Every instance has a project tag. Developers federate from the corporate identity provider into an IAM role, and each session carries a project session tag.\n\nNew teams are formed every month, and the security team does not want to change IAM policies when that happens.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an IAM policy for each team that lists the ARNs of the team's instances. Update the policy whenever the team launches or terminates instances.",
+        "note": "Resource ARN lists restrict access correctly, but policies must change for every instance and every new team. This is the most operational overhead."
+      },
+      {
+        "id": "b",
+        "text": "Create a role for each team with a policy that allows the actions when ec2:ResourceTag/project equals that team's project name.",
+        "note": "Tag conditions work, but the project name is hard-coded, so every new team needs a new role and policy. The requirement to avoid policy changes is not met."
+      },
+      {
+        "id": "c",
+        "text": "Create one policy that allows the actions when ec2:ResourceTag/project equals ${aws:PrincipalTag/project}. Attach the policy to the role that developers assume.",
+        "note": "This is attribute-based access control (ABAC). The policy compares the instance tag with the session tag, so one policy serves every current and future team with no changes."
+      },
+      {
+        "id": "d",
+        "text": "Create a separate AWS account for each team. Grant each team's developers full Amazon EC2 access in their own account through a federated IAM role.",
+        "note": "Separate accounts give strong isolation, but creating and governing a new account every month is more overhead, and full EC2 access exceeds start, stop, and reboot."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "ABAC scales permissions by matching principal tags with resource tags, so new teams need only tags, not policy edits. Role-based access control with hard-coded values or ARN lists requires a policy change for every new team or resource."
+  },
+  {
+    "id": "secure-1.1-19",
+    "domain": "secure",
+    "services": [
+      "IAM",
+      "Amazon SQS"
+    ],
+    "text": "An administrator set a permissions boundary on a developer's IAM role. The boundary allows all Amazon S3 and Amazon DynamoDB actions. The role's identity-based policy allows all Amazon S3 and Amazon SQS actions. The account's SCPs allow all actions.\n\nThe developer reports that sqs:SendMessage requests fail with AccessDenied. The security team wants the developer to be able to send messages to one specific queue only, and the permissions boundary must stay in place.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Attach the AmazonSQSFullAccess AWS managed policy to the developer's role in addition to the existing identity-based policy.",
+        "note": "The identity-based policy already allows SQS actions. The boundary does not include SQS, so effective permissions are unchanged, and full access exceeds one queue."
+      },
+      {
+        "id": "b",
+        "text": "Add sqs:SendMessage on the queue ARN to the permissions boundary. Limit the identity-based policy's SQS statement to that action on the same queue.",
+        "note": "Effective permissions are the intersection of the boundary and the identity-based policy. Adding the action to the boundary and narrowing the identity-based policy allows exactly one action on one queue."
+      },
+      {
+        "id": "c",
+        "text": "Create an SCP that explicitly allows sqs:SendMessage on the queue ARN, and attach the SCP directly to the developer's account.",
+        "note": "SCPs already allow all actions, and SCPs never grant permissions. The boundary still blocks SQS."
+      },
+      {
+        "id": "d",
+        "text": "Remove the permissions boundary from the developer's role. Limit the SQS statement in the role's identity-based policy to sqs:SendMessage on the queue.",
+        "note": "This grants the access, but it violates the requirement to keep the permissions boundary in place."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "An action is allowed only if every applicable layer allows it: SCPs, permissions boundary, and identity-based policy. The request failed because the boundary does not include SQS, so the fix must add the action to the boundary while the identity-based policy keeps it scoped to one queue."
+  },
+  {
+    "id": "secure-1.1-20",
+    "domain": "secure",
+    "services": [
+      "AWS Organizations",
+      "Amazon EC2",
+      "AWS Config"
+    ],
+    "text": "A company uses AWS Organizations with all features enabled. The finance team requires every new Amazon EC2 instance and Amazon EBS volume in member accounts to have a CostCenter tag when it is created. Requests that omit the tag must fail. A tag policy already standardizes the allowed CostCenter values.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an SCP that denies ec2:RunInstances and ec2:CreateVolume when aws:RequestTag/CostCenter is null. Attach the SCP to the member account OUs.",
+        "note": "An SCP with a Null condition on aws:RequestTag/CostCenter rejects any create request that does not include the tag, in every member account. This is the preventive control the requirement asks for."
+      },
+      {
+        "id": "b",
+        "text": "Turn on tag policy enforcement for the CostCenter tag on EC2 instances and volumes so that noncompliant requests are rejected.",
+        "note": "Tag policy enforcement rejects tag values that do not comply when the tag is supplied. It does not reject console or API requests that omit the tag, so untagged resources can still be created."
+      },
+      {
+        "id": "c",
+        "text": "Deploy the AWS Config required-tags managed rule to all member accounts by using an organization conformance pack.",
+        "note": "AWS Config evaluates resources after they are created and reports them as noncompliant. It does not make the create request fail."
+      },
+      {
+        "id": "d",
+        "text": "Activate CostCenter as a cost allocation tag in the management account so that untagged costs are visible in billing reports.",
+        "note": "Cost allocation tags make tags visible in billing reports. They do not enforce tagging."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Tag policies standardize tag keys and values; SCPs (or IAM policies) with aws:RequestTag conditions prevent creating untagged resources. AWS Config only detects noncompliance after the fact."
+  },
+  {
+    "id": "secure-1.1-21",
+    "domain": "secure",
+    "services": [
+      "AWS Control Tower",
+      "AWS Organizations"
+    ],
+    "text": "A company is moving from a single AWS account to many accounts. Logs from every account must be stored centrally where workload teams cannot alter them, and a security team needs read access to all accounts. Every new account must start with the same set of preventive and detective controls.\n\nTeams must be able to create accounts without opening a ticket. The company has a small cloud team and wants to write as little custom code as possible.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an organization in AWS Organizations. Write SCPs and AWS Config rules, deploy them with AWS CloudFormation StackSets, and build an account request workflow with AWS Step Functions.",
+        "note": "This can produce the same result, but the team must design, build, and maintain the landing zone, the guardrails, and the account vending workflow itself. That is the most custom work."
+      },
+      {
+        "id": "b",
+        "text": "Set up AWS Control Tower. Enable the required controls on the OUs, and have teams request new accounts through Account Factory.",
+        "note": "Control Tower sets up a landing zone with log archive and audit accounts, applies preventive and detective controls to OUs, and enrolls accounts created through Account Factory automatically. No custom code is needed."
+      },
+      {
+        "id": "c",
+        "text": "Create an organization in AWS Organizations with an organization trail. Deploy an AWS Config conformance pack to all accounts, and vend accounts through a Service Catalog product that calls CreateAccount.",
+        "note": "The trail and conformance pack provide central logging and detective rules, but there are no preventive controls, and the team must build and maintain the account vending product and its baseline itself."
+      },
+      {
+        "id": "d",
+        "text": "Use AWS Service Catalog to publish an AWS CloudFormation product that creates new accounts and deploys baseline resources into them.",
+        "note": "Service Catalog can offer self-service products, but it does not set up a landing zone or apply guardrails across OUs. The team would still build those parts itself."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "AWS Control Tower is the managed way to set up and govern a multi-account landing zone: shared log archive and audit accounts, preventive (SCP-based) and detective (Config-based) controls, and Account Factory for vending accounts. Building the same thing from Organizations, StackSets, and custom workflows is possible but carries more overhead."
+  },
+  {
+    "id": "secure-1.1-22",
+    "domain": "secure",
+    "services": [
+      "AWS Organizations",
+      "IAM"
+    ],
+    "text": "A company uses AWS Organizations. Each member account contains an IAM role named SecurityAuditRole that the central security team assumes from its tooling account. Member account administrators have full administrator access in their own accounts.\n\nRecently an administrator changed the trust policy of SecurityAuditRole, which broke the security team's access. The company wants to prevent every principal in the member accounts from modifying or deleting the role, except an automation role named OrgBaselineRole that deploys the role.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Attach a permissions boundary that denies changes to SecurityAuditRole to every administrator role in each of the member accounts.",
+        "note": "Administrators with full IAM access can remove the boundary from themselves or create new roles without it, so the protection can be bypassed."
+      },
+      {
+        "id": "b",
+        "text": "Add a statement to the trust policy of SecurityAuditRole that denies all principals in the member account permission to modify the role.",
+        "note": "A trust policy controls only who can assume the role. It cannot control who can edit or delete the role."
+      },
+      {
+        "id": "c",
+        "text": "Create an SCP that denies IAM actions that modify or delete SecurityAuditRole unless aws:PrincipalArn is OrgBaselineRole. Attach it to the member OUs.",
+        "note": "SCPs cannot be changed from inside member accounts and apply to every principal there, including administrators. The aws:PrincipalArn condition exempts only the automation role."
+      },
+      {
+        "id": "d",
+        "text": "Deploy an AWS Config rule in each member account that detects changes to SecurityAuditRole and automatically restores its configuration.",
+        "note": "AWS Config reacts after the change. The security team loses access until remediation runs, so this does not prevent the change."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "To protect baseline resources from member account administrators, use an SCP with a deny statement and an exception for the deployment role (aws:PrincipalArn). Permissions boundaries can be removed by administrators, trust policies govern only role assumption, and AWS Config only detects."
+  },
+  {
+    "id": "secure-1.1-23",
+    "domain": "secure",
+    "services": [
+      "Amazon S3",
+      "AWS Organizations"
+    ],
+    "text": "A company shares a reference dataset in an Amazon S3 bucket with all the accounts in its organization in AWS Organizations. The organization has 120 accounts, and new accounts are added every week.\n\nAny IAM principal in the organization whose own account grants it access must be able to read the objects. Principals outside the organization must not have access.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add each account ID as a principal in the bucket policy with s3:GetObject access. Update the bucket policy when new accounts join the organization.",
+        "note": "This grants the right access, but the policy must be edited every week as accounts join, and bucket policies have a size limit."
+      },
+      {
+        "id": "b",
+        "text": "Create an IAM role with read access in the bucket owner's account. Add each account ID to the role's trust policy, and have principals assume the role.",
+        "note": "The trust policy must be updated for every new account, and every consumer must change its code to assume the role. This is more overhead than a single bucket policy statement."
+      },
+      {
+        "id": "c",
+        "text": "Share the bucket with the organization by using AWS Resource Access Manager (AWS RAM).",
+        "note": "AWS RAM does not support sharing S3 buckets. Cross-account bucket access is granted with bucket policies or access points."
+      },
+      {
+        "id": "d",
+        "text": "Add a bucket policy statement that allows s3:GetObject for all principals when aws:PrincipalOrgID equals the organization ID.",
+        "note": "The aws:PrincipalOrgID condition matches any principal in any current or future account in the organization, so the policy never needs updating. Principals outside the organization are not allowed."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Use the aws:PrincipalOrgID condition key in resource-based policies to grant access to an entire organization without listing accounts. Each principal still needs an identity-based allow from its own account, which matches the requirement."
+  },
+  {
+    "id": "secure-1.1-24",
+    "domain": "secure",
+    "services": [
+      "IAM"
+    ],
+    "text": "A company has three IAM groups in one AWS account: Developers, Testers, and Support. In addition to their group-specific permissions, all three groups need the same read access to four Amazon CloudWatch Logs log groups and one Amazon S3 bucket.\n\nThe security team wants the shared permissions defined once and changed in one place. Staff must be able to use the shared and group-specific permissions in the same session, and new staff must receive the shared permissions when they are added to a group.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a customer managed policy that grants read access to the four log groups and the bucket. Attach the policy to the three groups.",
+        "note": "A customer managed policy is defined once, is versioned, and can be attached to several groups. Members inherit it from the group in their own session, so new staff get access when they join a group."
+      },
+      {
+        "id": "b",
+        "text": "Create a customer managed policy that grants read access to the four log groups and the bucket. Set it as the permissions boundary of each user in the three groups.",
+        "note": "A permissions boundary only limits the maximum permissions and grants nothing. Boundaries are also set per user, so new staff would not receive it from their group."
+      },
+      {
+        "id": "c",
+        "text": "Create an IAM role with a policy that grants read access to the four log groups and the bucket. Allow the three groups to assume the role.",
+        "note": "The role is defined once, but users must switch to it, and a role session has only the role's permissions. Staff could not use their group-specific permissions in the same session."
+      },
+      {
+        "id": "d",
+        "text": "Add statements to the S3 bucket policy and to a CloudWatch Logs resource policy that grant read access to the three IAM groups as principals.",
+        "note": "An IAM group is not a principal, so it cannot be named in a resource-based policy. The shared access would also be split across several policies instead of one place."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Attach shared permissions to groups as a customer managed policy: it is defined once, versioned, and inherited by every member. Permissions boundaries grant nothing, assuming a role replaces the user's permissions for that session, and IAM groups cannot be principals in resource-based policies."
+  },
+  {
+    "id": "secure-1.1-25",
+    "domain": "secure",
+    "services": [
+      "IAM Access Analyzer",
+      "AWS CloudTrail",
+      "IAM"
+    ],
+    "text": "A company's data pipeline runs under an IAM role that has the AdministratorAccess policy attached. The pipeline has run in production for 3 months, and an AWS CloudTrail trail records the account's management events.\n\nThe security team wants to replace AdministratorAccess with a least-privilege policy based on the actions that the pipeline actually performs.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Download the IAM credential report for the account. Remove permissions for the services that the report shows the role has not used.",
+        "note": "The credential report lists IAM users and the status of their passwords, access keys, and MFA devices. It contains no information about the actions a role performs."
+      },
+      {
+        "id": "b",
+        "text": "Use IAM Access Analyzer to generate a policy from the role's CloudTrail activity. Review the generated policy, and replace AdministratorAccess with it.",
+        "note": "Access Analyzer policy generation analyzes up to 90 days of the trail and produces a policy template with the services and actions that the role used. The team reviews it, adding resource ARNs and any data-event actions, which are not identified."
+      },
+      {
+        "id": "c",
+        "text": "Query the CloudTrail logs with Amazon Athena to list the API calls made by the role. Write a new least-privilege policy by hand from the query results.",
+        "note": "This produces a least-privilege policy, but the team must build the queries and write the policy manually. Access Analyzer does the same work automatically."
+      },
+      {
+        "id": "d",
+        "text": "Turn on AWS Config recording for IAM resources. Use the role's configuration timeline to identify the permissions the pipeline uses.",
+        "note": "AWS Config records configuration changes to the role and its policies, not the API calls the role makes. It cannot show which permissions are actually used."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "IAM Access Analyzer can generate a least-privilege policy from a principal's CloudTrail activity, which is the fastest way to right-size an over-permissive role. The credential report covers IAM users' credentials, and AWS Config tracks configuration, not usage."
+  },
+  {
+    "id": "secure-1.1-26",
+    "domain": "secure",
+    "services": [
+      "IAM Access Analyzer",
+      "AWS Organizations"
+    ],
+    "text": "A company has 80 accounts in AWS Organizations. The security team must identify every S3 bucket, KMS key, IAM role trust policy, and Lambda function policy that grants access to principals outside the organization. The team must be notified on an ongoing basis whenever a new policy of this kind is created.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an organization-wide IAM Access Analyzer external access analyzer in a delegated administrator account. Route findings to the team with Amazon EventBridge.",
+        "note": "Access Analyzer evaluates resource-based policies on buckets, KMS keys, role trust policies, Lambda functions, and more, and creates a finding for any access from outside the zone of trust. Findings update continuously and are published to EventBridge."
+      },
+      {
+        "id": "b",
+        "text": "Enable Amazon Macie in all accounts through a delegated administrator account. Route Macie findings to the security team with Amazon EventBridge.",
+        "note": "Macie discovers sensitive data in S3 and reports bucket-level exposure. It does not analyze KMS key policies, role trust policies, or Lambda function policies."
+      },
+      {
+        "id": "c",
+        "text": "Enable Amazon GuardDuty in all accounts through a delegated administrator account. Route GuardDuty findings to the security team with Amazon EventBridge.",
+        "note": "GuardDuty detects threats from logs and network activity. It does not evaluate resource policies for external access."
+      },
+      {
+        "id": "d",
+        "text": "Schedule an AWS Lambda function that assumes a role in each account, reads every resource-based policy, and reports any principals outside the organization.",
+        "note": "This could work, but the team must write and maintain policy-parsing code for every resource type. A managed analyzer does this with no code."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "IAM Access Analyzer external access analysis, with the organization as the zone of trust, finds resources that are shared outside the organization across many resource types. Macie focuses on sensitive data in S3, and GuardDuty on threat detection."
+  },
+  {
+    "id": "secure-1.1-27",
+    "domain": "secure",
+    "services": [
+      "IAM",
+      "AWS STS",
+      "AWS CodePipeline",
+      "AWS CloudFormation"
+    ],
+    "text": "A company runs AWS CodePipeline in a tooling account. The pipeline's deploy stage runs with an IAM role named PipelineRole and must deploy AWS CloudFormation stacks into a production account.\n\nThe company does not allow long-term credentials. The production account team wants to control which permissions the pipeline has in the production account.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "In the production account, create a deployment role with the required permissions and a trust policy that allows PipelineRole to assume it.",
+        "note": "The role lives in the account that owns the resources, so the production team controls its permissions. The trust policy names the pipeline role as the only principal that can assume it."
+      },
+      {
+        "id": "b",
+        "text": "In the tooling account, create a deployment role with the required production permissions. Add the production account to its trust policy.",
+        "note": "Permissions in a tooling account role cannot act on resources in the production account. The role must be created in the production account."
+      },
+      {
+        "id": "c",
+        "text": "In the production account, create an IAM user with deployment permissions. Store its access keys in AWS Secrets Manager in the tooling account.",
+        "note": "Access keys are long-term credentials, which the company does not allow."
+      },
+      {
+        "id": "d",
+        "text": "Add a statement to the identity-based policy of PipelineRole that allows sts:AssumeRole on the ARN of the production deployment role.",
+        "note": "For cross-account role assumption, the caller's account must also allow sts:AssumeRole on the target role. Both the trust policy and this permission are required."
+      },
+      {
+        "id": "e",
+        "text": "Add the PipelineRole ARN to the permissions boundary of the production deployment role.",
+        "note": "A permissions boundary limits what the deployment role can do. It does not control who can assume the role and grants nothing to PipelineRole."
+      }
+    ],
+    "correct": [
+      "a",
+      "d"
+    ],
+    "explanation": "Cross-account role assumption needs two sides: a role in the target account whose trust policy names the caller, and an sts:AssumeRole permission in the caller's identity-based policy. Placing the role in the target account keeps that account in control of the permissions."
+  },
+  {
+    "id": "secure-1.1-28",
+    "domain": "secure",
+    "services": [
+      "IAM",
+      "AWS STS",
+      "Amazon EC2"
+    ],
+    "text": "A security engineer discovers that temporary credentials for an IAM role used by a fleet of Amazon EC2 instances were published in a public code repository. The credentials remain valid for another 6 hours.\n\nThe engineer must invalidate the exposed credentials immediately. The application on the instances must keep using the same role after the instances receive new credentials.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Delete the role. Create a new role with the same permissions, and associate it with the instances.",
+        "note": "This disrupts the application and requires re-associating instance profiles across the fleet. The application would no longer use the same role."
+      },
+      {
+        "id": "b",
+        "text": "Remove the role from the instance profile, and then add the role back to the instance profile.",
+        "note": "Changing the instance profile does not invalidate credentials that AWS STS already issued. The exposed credentials stay valid until they expire in 6 hours."
+      },
+      {
+        "id": "c",
+        "text": "Detach all permissions policies from the role until the exposed credentials expire.",
+        "note": "This blocks the exposed credentials, but it also blocks the application for the next 6 hours, because new credentials would have no permissions either."
+      },
+      {
+        "id": "d",
+        "text": "Use the revoke active sessions option for the role in the IAM console.",
+        "note": "Revoking sessions attaches a policy that denies all actions to credentials issued before the current time. Credentials issued later, including the instances' refreshed credentials, keep working with the role."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Temporary role credentials cannot be deleted, but they can be invalidated by revoking active sessions, which denies any session token issued before a given time (aws:TokenIssueTime). New sessions for the same role keep working; instances may see AccessDenied briefly until the instance metadata service delivers refreshed credentials."
+  },
+  {
+    "id": "secure-1.1-29",
+    "domain": "secure",
+    "services": [
+      "Amazon Cognito",
+      "Amazon Kinesis Data Streams",
+      "IAM"
+    ],
+    "text": "A gaming company has a mobile game that sends gameplay telemetry records to an Amazon Kinesis data stream. Players can play without creating an account, and the company needs telemetry from all players, including players who never sign in.\n\nThe app must not contain embedded AWS credentials. Each device must be limited to kinesis:PutRecord on the single stream.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Amazon Cognito user pool. Require every player to sign up before playing, and send telemetry only from signed-in players.",
+        "note": "This changes the product so that players must create an account, and a user pool alone does not issue AWS credentials for calling Kinesis."
+      },
+      {
+        "id": "b",
+        "text": "Create an IAM user whose policy allows only kinesis:PutRecord on the stream. Embed the user's access keys in the app's configuration.",
+        "note": "The permissions are narrow, but embedded long-term keys can be extracted from the app, which the requirements forbid."
+      },
+      {
+        "id": "c",
+        "text": "Create an Amazon Cognito identity pool with guest access turned on. Give the unauthenticated role permission for only kinesis:PutRecord on the stream.",
+        "note": "An identity pool issues temporary, limited AWS credentials to anonymous guest users. The unauthenticated role restricts every device to one action on one stream, and no servers are needed."
+      },
+      {
+        "id": "d",
+        "text": "Deploy an API on Amazon EC2 instances that receives telemetry from the app and writes the records to the stream by using an instance profile role.",
+        "note": "This keeps credentials off the device, but the company must run and scale a server fleet. That is more overhead than issuing guest credentials."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Cognito identity pools support unauthenticated (guest) identities that receive temporary credentials for a tightly scoped role. Use them when anonymous users must call AWS services directly. User pools handle sign-in but do not issue AWS credentials on their own."
+  },
+  {
+    "id": "secure-1.1-30",
+    "domain": "secure",
+    "services": [
+      "IAM",
+      "Amazon EC2"
+    ],
+    "text": "A developer must launch Amazon EC2 instances that use an existing IAM role named AppRole through its instance profile. The developer has permission for ec2:RunInstances, but launch requests that specify the instance profile fail with an authorization error for iam:PassRole.\n\nSome roles in the account have administrative permissions. The security team wants to ensure that the developer cannot attach any other role to instances.\n\nWhich policy change will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Allow iam:PassRole on all resources for the developer.",
+        "note": "This fixes the error, but the developer could then pass an administrative role to an instance and use it to escalate privileges."
+      },
+      {
+        "id": "b",
+        "text": "Allow iam:PassRole on the AppRole ARN for the developer, with an iam:PassedToService condition of ec2.amazonaws.com.",
+        "note": "Scoping iam:PassRole to one role ARN, and only to Amazon EC2, lets the developer launch instances with AppRole and no other role."
+      },
+      {
+        "id": "c",
+        "text": "Allow sts:AssumeRole on the AppRole ARN for the developer.",
+        "note": "Assuming a role gives the developer the role's permissions directly, which is not needed. It does not allow passing the role to EC2, so the launch still fails."
+      },
+      {
+        "id": "d",
+        "text": "Allow iam:CreateRole and iam:AddRoleToInstanceProfile so that the developer can create a role with the same permissions as AppRole.",
+        "note": "The developer would still need iam:PassRole for the new role, and the ability to create roles opens a path to privilege escalation."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Passing a role to a service requires iam:PassRole, which should be scoped to specific role ARNs (and optionally a service with iam:PassedToService). PassRole on all resources is a common privilege escalation path. Passing a role is different from assuming it."
+  },
+  {
+    "id": "secure-1.1-31",
+    "domain": "secure",
+    "services": [
+      "AWS KMS",
+      "IAM"
+    ],
+    "text": "An administrator created a customer managed AWS KMS key. The key policy has one statement, which grants all KMS permissions to the administrator's IAM user. Later, developers attached identity-based policies that allow kms:Encrypt and kms:Decrypt on the key to several application roles, but the roles receive AccessDenied errors.\n\nThe security team wants to manage future access to the key with IAM policies. The administrator must keep its current permissions on the key.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Attach the AWSKeyManagementServicePowerUser managed policy to the application roles.",
+        "note": "This is another identity-based policy. The key policy does not allow IAM policies to grant access to the key, so the roles are still denied."
+      },
+      {
+        "id": "b",
+        "text": "Create a KMS grant for each application role that allows kms:Encrypt and kms:Decrypt.",
+        "note": "Grants would let the current roles use the key, but future access would be managed through grants instead of IAM policies, which does not meet the requirement."
+      },
+      {
+        "id": "c",
+        "text": "Create a new customer managed key with the default key policy. Re-encrypt all data with the new key, and schedule the old key for deletion.",
+        "note": "The default key policy enables IAM policies, but re-encrypting all existing data and updating every application to use a new key is far more work than editing the key policy."
+      },
+      {
+        "id": "d",
+        "text": "Add a statement to the key policy that allows all KMS actions for the account principal (arn:aws:iam::111122223333:root).",
+        "note": "Granting the account principal in the key policy delegates access control to IAM, so identity-based policies in the account can grant use of the key. The administrator's existing statement remains."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Unlike most AWS resources, a KMS key is accessible only if its key policy allows it. IAM policies take effect only when the key policy includes a statement for the account principal, which the default key policy contains. Grants are an alternative for granting access to specific principals, not a way to enable IAM policies."
+  },
+  {
+    "id": "secure-1.1-32",
+    "domain": "secure",
+    "services": [
+      "AWS Organizations"
+    ],
+    "text": "A company uses AWS Organizations. The Sandbox OU contains 25 accounts that are used for experiments. The default FullAWSAccess SCP is attached to the organization root, to the Sandbox OU, and to every account.\n\nThe company wants all principals in the Sandbox accounts to be able to use only Amazon EC2, Amazon S3, and AWS Lambda. The restriction must also cover services that AWS launches in the future.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Attach an additional SCP to the Sandbox OU that allows only Amazon EC2, Amazon S3, and AWS Lambda actions.",
+        "note": "SCP allows at one level are combined. Because FullAWSAccess is still attached to the Sandbox OU, every service remains allowed and the new SCP has no effect."
+      },
+      {
+        "id": "b",
+        "text": "Attach an SCP to the Sandbox OU that denies the actions of every other AWS service, listing each service by name.",
+        "note": "A deny list works only for the services that are listed. New services are allowed until someone adds them, so the policy needs constant maintenance."
+      },
+      {
+        "id": "c",
+        "text": "Detach FullAWSAccess from the Sandbox OU. Attach an SCP to the Sandbox OU that allows only Amazon EC2, Amazon S3, and AWS Lambda actions.",
+        "note": "With an allow-list SCP as the only SCP on the OU, every account in the OU can use only the three services. Any service that is not listed, including future services, is implicitly denied."
+      },
+      {
+        "id": "d",
+        "text": "Create a permissions boundary that allows only Amazon EC2, Amazon S3, and AWS Lambda actions. Attach it to every IAM user and role in the Sandbox accounts.",
+        "note": "Boundaries must be attached to every principal, including new ones, and account administrators can remove them. This is neither complete nor low overhead."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "An allow-list SCP strategy replaces FullAWSAccess with an SCP that allows only approved services, so anything unlisted, including new services, is denied. An action must be allowed by an SCP at every level from the root to the account, so an extra allow SCP next to FullAWSAccess restricts nothing."
+  },
+  {
+    "id": "secure-1.1-33",
+    "domain": "secure",
+    "services": [
+      "IAM",
+      "AWS STS"
+    ],
+    "text": "A company deploys infrastructure from GitHub Actions workflows in a repository named example-org/infra. The workflows authenticate to AWS with an IAM user access key that is stored as a GitHub secret.\n\nThe company wants to remove long-term AWS credentials from GitHub. Only workflows that run on the main branch of that repository may obtain credentials for the deployment role.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Store the access key in AWS Secrets Manager. Configure the workflow to retrieve the key from Secrets Manager at runtime.",
+        "note": "The workflow would still need AWS credentials to call Secrets Manager, and the retrieved key is still a long-term credential."
+      },
+      {
+        "id": "b",
+        "text": "Create an IAM OIDC identity provider in the account for the GitHub Actions token issuer (token.actions.githubusercontent.com).",
+        "note": "The IAM OIDC identity provider lets AWS STS trust tokens issued by GitHub Actions, so workflows can exchange them for temporary role credentials."
+      },
+      {
+        "id": "c",
+        "text": "Create the deployment role with a trust policy that allows sts:AssumeRoleWithWebIdentity from the GitHub OIDC provider when the aud claim is sts.amazonaws.com and the sub claim matches repo:example-org/*.",
+        "note": "The sub pattern limits the role to the example-org organization, but any repository and any branch in it could obtain credentials. Workflows outside the main branch of example-org/infra could assume the role."
+      },
+      {
+        "id": "d",
+        "text": "Configure IAM Identity Center with GitHub as an external identity provider, and assign the workflow a permission set for the deployment account.",
+        "note": "IAM Identity Center provides interactive single sign-on for people. It does not issue credentials to CI/CD workflows from OIDC tokens."
+      },
+      {
+        "id": "e",
+        "text": "Create the deployment role with a trust policy that allows sts:AssumeRoleWithWebIdentity from the GitHub OIDC provider when the aud claim is sts.amazonaws.com and the sub claim is repo:example-org/infra:ref:refs/heads/main.",
+        "note": "The sub claim identifies the repository and branch that requested the token. Matching it in the trust policy limits the role to workflows from the main branch of this repository."
+      }
+    ],
+    "correct": [
+      "b",
+      "e"
+    ],
+    "explanation": "OIDC federation replaces stored keys in CI/CD: create an IAM OIDC identity provider and a role that trusts it through AssumeRoleWithWebIdentity. IAM requires a sub condition for the GitHub provider, and the sub value must name the exact repository and branch to restrict access to one workflow source."
+  },
+  {
+    "id": "secure-1.1-34",
+    "domain": "secure",
+    "services": [
+      "Amazon EKS",
+      "IAM",
+      "Amazon DynamoDB"
+    ],
+    "text": "A company runs several microservices on an Amazon EKS cluster that uses managed node groups. One microservice needs to read and write items in a single Amazon DynamoDB table. Other microservices that run on the same nodes must not have access to the table.\n\nThe company wants to avoid storing AWS credentials in the cluster.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add permissions for the DynamoDB table to the IAM role of the managed node group.",
+        "note": "Pods can use the node role through the instance metadata service, so every microservice on those nodes would get access to the table."
+      },
+      {
+        "id": "b",
+        "text": "Create an IAM user with access to the table. Store the user's access keys in a Kubernetes secret that is mounted only in the microservice's pods.",
+        "note": "Access is limited to one microservice, but long-term credentials are stored in the cluster, which the company wants to avoid."
+      },
+      {
+        "id": "c",
+        "text": "Create an IAM role with access to the table. Associate the role with the microservice's Kubernetes service account by using EKS Pod Identity.",
+        "note": "EKS Pod Identity delivers temporary credentials for the role only to pods that run under that service account. Other pods on the same nodes do not receive them."
+      },
+      {
+        "id": "d",
+        "text": "Create an IAM role with access to the table. Set the role as the cluster IAM role of the EKS cluster.",
+        "note": "The cluster IAM role is used by the Kubernetes control plane to manage AWS resources. Pods do not receive its permissions."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Give pods their own IAM permissions with EKS Pod Identity (or IAM roles for service accounts), which map a role to a Kubernetes service account. Permissions on the node role are shared by every pod on the node, which breaks least privilege."
+  },
+  {
+    "id": "secure-1.1-35",
+    "domain": "secure",
+    "services": [
+      "Amazon ECS",
+      "AWS Fargate",
+      "IAM",
+      "Amazon SNS"
+    ],
+    "text": "A company runs a containerized order service on Amazon ECS with AWS Fargate. The service must publish messages to one Amazon SNS topic.\n\nA developer added sns:Publish to the task execution role, but the application's calls to Amazon SNS fail with AccessDenied errors. Image pulls from Amazon ECR and log delivery to Amazon CloudWatch Logs work correctly.\n\nWhich solution will fix the errors while following the principle of least privilege?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Change the sns:Publish statement in the task execution role so that it applies to all SNS topics in the account instead of one topic.",
+        "note": "The task execution role is used by the ECS agent to pull images and send logs. The application code never receives its credentials, so widening the statement does not help."
+      },
+      {
+        "id": "b",
+        "text": "Add a statement to the topic's access policy that allows the task execution role to publish to the topic.",
+        "note": "The application does not sign its requests with the task execution role's credentials, so a grant to that role still does not apply to the application's calls."
+      },
+      {
+        "id": "c",
+        "text": "Move the service to the Amazon EC2 launch type. Add sns:Publish on the topic to the instance profile role of the container instances in the cluster.",
+        "note": "Containers could use the instance role, but every task on the instance would get the permission, and the company would have to manage EC2 instances."
+      },
+      {
+        "id": "d",
+        "text": "Create an IAM role with sns:Publish on the topic. Set it as the task role in the task definition, and remove sns:Publish from the execution role.",
+        "note": "The task role provides credentials to the application code in the containers. Scoping it to one topic and removing the unused permission from the execution role follows least privilege."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "In Amazon ECS, the task role grants permissions to the application in the containers; the task execution role is used by ECS itself to pull images, fetch secrets, and send logs. Application permissions belong in the task role."
+  }
+]

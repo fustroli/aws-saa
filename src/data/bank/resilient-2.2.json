@@ -1,0 +1,1608 @@
+[
+  {
+    "id": "resilient-2.2-01",
+    "domain": "resilient",
+    "services": [
+      "Amazon RDS"
+    ],
+    "text": "A company runs an order-processing application that stores data in a single-AZ Amazon RDS for PostgreSQL DB instance. An outage in the instance's Availability Zone recently stopped order processing for several hours.\n\nThe company needs the database to fail over automatically if an Availability Zone becomes unavailable. Committed transactions must not be lost during a failover, and the application must continue to use the same database endpoint. The application does not need additional read capacity.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a read replica of the DB instance in a different Availability Zone. Use an Amazon CloudWatch alarm and an AWS Lambda function to promote the replica and update the application's connection string when the primary fails.",
+        "note": "A read replica uses asynchronous replication, so recently committed transactions can be lost at promotion. The custom promotion and connection-string logic also adds operational overhead and changes the endpoint."
+      },
+      {
+        "id": "b",
+        "text": "Modify the DB instance to be a Multi-AZ deployment so that Amazon RDS maintains a synchronous standby instance in a different Availability Zone.",
+        "note": "A Multi-AZ deployment replicates synchronously to a standby in another Availability Zone and fails over automatically by updating the DNS record of the same endpoint. This meets every requirement with a single configuration change."
+      },
+      {
+        "id": "c",
+        "text": "Use AWS Backup to take snapshots of the DB instance every 15 minutes. Restore the latest snapshot to a new DB instance in another Availability Zone when the primary fails.",
+        "note": "Restoring from snapshots loses up to 15 minutes of transactions, takes time, and produces a new endpoint. This does not meet the no-data-loss or automatic failover requirements."
+      },
+      {
+        "id": "d",
+        "text": "Migrate the database to PostgreSQL on Amazon EC2 instances in two Availability Zones. Configure synchronous streaming replication and a floating private IP address for failover.",
+        "note": "Self-managed replication on EC2 can avoid data loss, but the company would have to build and operate failover, patching, and backups. This is far more operational overhead than a managed Multi-AZ deployment."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "RDS Multi-AZ keeps a synchronous standby in another Availability Zone and fails over automatically behind the same DNS endpoint, so no committed data is lost and the application needs no changes. Remember: Multi-AZ is for availability (synchronous, automatic failover); read replicas are for read scaling (asynchronous, manual promotion)."
+  },
+  {
+    "id": "resilient-2.2-02",
+    "domain": "resilient",
+    "services": [
+      "Amazon RDS"
+    ],
+    "text": "A company runs a production database on an Amazon RDS for MySQL Multi-AZ DB instance deployment. Business analysts run heavy reporting queries against the primary instance, which slows down the application. The company also wants failovers to complete faster than they do today.\n\nThe company must remain on Amazon RDS for MySQL because of a vendor support agreement. The company wants the standby capacity that it pays for to serve read traffic instead of sitting idle.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Keep the Multi-AZ DB instance deployment. Point the reporting tools at the endpoint of the standby instance in the second Availability Zone.",
+        "note": "In a Multi-AZ DB instance deployment, the standby is not accessible for reads. Reporting queries cannot be sent to it."
+      },
+      {
+        "id": "b",
+        "text": "Keep the Multi-AZ DB instance deployment. Add a read replica in a third Availability Zone and point the reporting tools at the read replica endpoint.",
+        "note": "A read replica offloads the reporting queries, but the standby still sits idle and failover time does not improve. This does not meet the requirements for faster failover or a readable standby."
+      },
+      {
+        "id": "c",
+        "text": "Migrate the database to an RDS for MySQL Multi-AZ DB cluster deployment. Point the reporting tools at the cluster's reader endpoint.",
+        "note": "A Multi-AZ DB cluster has a writer and two readable standby instances in three Availability Zones. The standbys serve read traffic through the reader endpoint, and failover is typically faster than with a Multi-AZ DB instance deployment."
+      },
+      {
+        "id": "d",
+        "text": "Migrate the database to an Amazon Aurora MySQL DB cluster with two Aurora Replicas. Point the reporting tools at the cluster's reader endpoint.",
+        "note": "Aurora Replicas serve reads and provide fast failover. However, Aurora MySQL is a different engine offering, which violates the requirement to remain on Amazon RDS for MySQL."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "An RDS Multi-AZ DB cluster deployment provides two readable standbys and faster failover than the single-standby Multi-AZ DB instance deployment, while staying on RDS for MySQL. Remember the difference: a Multi-AZ DB instance standby cannot serve reads; Multi-AZ DB cluster standbys can."
+  },
+  {
+    "id": "resilient-2.2-03",
+    "domain": "resilient",
+    "services": [
+      "Amazon RDS"
+    ],
+    "text": "A company runs its customer database on an Amazon RDS for MySQL Multi-AZ DB instance in the us-east-1 Region. A new disaster recovery (DR) policy requires the company to recover the database in the us-west-2 Region if us-east-1 becomes unavailable.\n\nThe policy sets an RPO of 5 minutes and an RTO of 1 hour. The company does not want to change database engines.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a cross-Region read replica of the DB instance in us-west-2. Promote the read replica to a standalone DB instance during a disaster.",
+        "note": "A cross-Region read replica receives changes asynchronously, typically within seconds, which meets the 5-minute RPO. Promotion takes minutes, which meets the 1-hour RTO, and only one replica instance runs in the DR Region."
+      },
+      {
+        "id": "b",
+        "text": "Use AWS Backup to create a daily snapshot of the DB instance and copy each snapshot to us-west-2. Restore the latest snapshot during a disaster.",
+        "note": "Daily snapshots can lose up to 24 hours of data. This does not meet the 5-minute RPO."
+      },
+      {
+        "id": "c",
+        "text": "Convert the DB instance to a Multi-AZ DB cluster deployment with a writer and two standby instances in three Availability Zones in us-east-1.",
+        "note": "A Multi-AZ DB cluster improves availability and failover time, but all of its instances stay in us-east-1. This does not protect against the loss of the us-east-1 Region."
+      },
+      {
+        "id": "d",
+        "text": "Migrate the database to Amazon Aurora MySQL. Create an Aurora global database with a secondary cluster in us-west-2.",
+        "note": "Aurora Global Database meets the RPO and RTO, but it requires a migration to a different engine, which the company does not want. It also costs more than a single cross-Region read replica."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "A cross-Region read replica is the lowest-cost way to keep an RDS for MySQL database nearly current in another Region, and promoting it meets an RTO of an hour. Snapshot copies are cheaper but cannot meet a minutes-level RPO, and Multi-AZ never leaves the Region."
+  },
+  {
+    "id": "resilient-2.2-04",
+    "domain": "resilient",
+    "services": [
+      "Amazon Aurora"
+    ],
+    "text": "A financial services company runs a payments application on an Amazon Aurora MySQL DB cluster in the eu-west-1 Region. The company is expanding into North America and wants users there to have low-latency reads from a Region near them.\n\nIf eu-west-1 becomes unavailable, the company requires an RPO of about 1 second and an RTO of about 1 minute for the database.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a cross-Region Aurora read replica of the DB cluster in us-east-1 by using MySQL binary log replication. Promote the replica during a disaster.",
+        "note": "Binary log replication can serve local reads, but replication lag can grow under heavy write load and promotion takes longer. It cannot reliably deliver a 1-second RPO and a 1-minute RTO."
+      },
+      {
+        "id": "b",
+        "text": "Use AWS Backup to take hourly snapshots of the DB cluster and copy them to us-east-1. Restore the latest snapshot during a disaster.",
+        "note": "Hourly snapshots can lose up to an hour of data and restoring a cluster takes much longer than a minute. This also provides no local reads in North America."
+      },
+      {
+        "id": "c",
+        "text": "Add Aurora Replicas to the DB cluster in all three Availability Zones in eu-west-1. Direct North American users to the cluster's reader endpoint.",
+        "note": "Aurora Replicas improve availability within eu-west-1 but do not protect against a Regional outage. North American users would still read from Europe."
+      },
+      {
+        "id": "d",
+        "text": "Convert the DB cluster to an Aurora global database. Add a secondary DB cluster in us-east-1 and fail over to it if eu-west-1 becomes unavailable.",
+        "note": "Aurora Global Database replicates at the storage layer with typical lag under 1 second, serves local reads from the secondary cluster, and can fail over to the secondary Region in about a minute."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Aurora Global Database uses dedicated storage-level replication, giving an RPO of about 1 second and an RTO of about 1 minute, and its secondary clusters serve local reads. Binary log replicas, snapshots, and in-Region replicas each miss either the Regional DR target or the latency goal."
+  },
+  {
+    "id": "resilient-2.2-05",
+    "domain": "resilient",
+    "services": [
+      "Amazon Aurora"
+    ],
+    "text": "A company runs an Amazon Aurora PostgreSQL DB cluster. The writer is a db.r6g.4xlarge instance. The cluster has three Aurora Replicas: two db.r6g.large instances that the analytics team uses, and one db.r6g.4xlarge instance. A previous administrator set the two db.r6g.large replicas to promotion tier 0 and left the db.r6g.4xlarge replica at the default tier 1.\n\nDuring a recent failover, Aurora promoted a db.r6g.large replica, and the application slowed down until an engineer intervened. The company wants the db.r6g.4xlarge replica to be promoted in future failovers. The analytics team must keep its replicas.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Assign the db.r6g.4xlarge replica to promotion tier 0. Assign the two db.r6g.large replicas to promotion tier 15.",
+        "note": "Aurora promotes the replica in the lowest-numbered (highest-priority) promotion tier. Placing the large replica alone in tier 0 makes it the failover target."
+      },
+      {
+        "id": "b",
+        "text": "Create a custom endpoint that contains only the db.r6g.4xlarge replica. Configure the application to send writes to the custom endpoint.",
+        "note": "Custom endpoints group instances for connections; they do not influence which replica Aurora promotes. Sending writes to a reader instance would also fail."
+      },
+      {
+        "id": "c",
+        "text": "Assign the db.r6g.4xlarge replica to promotion tier 15. Assign the two db.r6g.large replicas to promotion tier 0.",
+        "note": "This reverses the priority. Tier 0 is the highest priority, so Aurora would promote one of the small analytics replicas."
+      },
+      {
+        "id": "d",
+        "text": "Configure Aurora Auto Scaling for the cluster with a target CPU utilization so that larger replicas are added when the writer fails.",
+        "note": "Aurora Auto Scaling adds or removes replicas based on load. It does not control which existing replica Aurora promotes during a failover."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Aurora chooses the failover target by promotion tier, with tier 0 as the highest priority; only replicas that share a tier are ranked by instance size. Putting the large replica alone in the highest-priority tier guarantees it is promoted while the analytics replicas remain available for reads."
+  },
+  {
+    "id": "resilient-2.2-06",
+    "domain": "resilient",
+    "services": [
+      "Amazon Aurora"
+    ],
+    "text": "A company's application connects to an Amazon Aurora MySQL DB cluster that has one writer and two Aurora Replicas. The application stores the instance endpoint of the writer instance for writes and the instance endpoint of one replica for reads.\n\nAfter a recent failover, the application's writes failed until an engineer updated its configuration. The company wants writes to follow the current writer automatically after any failover and wants read traffic spread across all replicas.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create Amazon Route 53 weighted records that point to the instance endpoints. Update the records with an AWS Lambda function that runs when Aurora publishes a failover event.",
+        "note": "This can work, but it re-implements endpoint management with custom code that the company must build and maintain. It adds operational overhead compared to built-in Aurora endpoints."
+      },
+      {
+        "id": "b",
+        "text": "Create a custom endpoint that includes the writer and both replicas. Configure the application to send both reads and writes to the custom endpoint.",
+        "note": "A custom endpoint load-balances connections across its members, so many writes would reach read-only replicas and fail."
+      },
+      {
+        "id": "c",
+        "text": "Configure the application to send writes to the cluster endpoint and reads to the reader endpoint.",
+        "note": "The cluster endpoint always points to the current writer, including after a failover, and the reader endpoint load-balances connections across the available replicas. No custom logic is needed."
+      },
+      {
+        "id": "d",
+        "text": "Configure the application to send writes to the reader endpoint and reads to the cluster endpoint.",
+        "note": "This reverses the endpoints. The reader endpoint connects only to read-only replicas, so writes would fail, and reads would all land on the writer."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Aurora's cluster (writer) endpoint follows the writer through failovers and the reader endpoint spreads connections across replicas. Using these managed endpoints instead of instance endpoints removes manual reconfiguration after a failover."
+  },
+  {
+    "id": "resilient-2.2-07",
+    "domain": "resilient",
+    "services": [
+      "Amazon DynamoDB"
+    ],
+    "text": "A gaming company stores player profiles in an Amazon DynamoDB table in the us-east-1 Region. The company is launching in Europe and will run its game backend in both us-east-1 and eu-central-1. Players in each Region must be able to read and write their profiles with single-digit millisecond latency.\n\nThe game must keep accepting writes in one Region if the other Region becomes unavailable.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a second table in eu-central-1. Use DynamoDB Streams and AWS Lambda functions in each Region to copy every change to the table in the other Region.",
+        "note": "Custom stream-based replication can work, but the company must build, monitor, and resolve conflicts in its own replication code. This is more operational overhead than a managed feature."
+      },
+      {
+        "id": "b",
+        "text": "Convert the table to a DynamoDB global table and add a replica in eu-central-1. Configure the backend in each Region to use the local replica.",
+        "note": "Global tables provide fully managed, multi-active replication. Each Region reads and writes its local replica with low latency and keeps working if the other Region is unavailable."
+      },
+      {
+        "id": "c",
+        "text": "Deploy a DynamoDB Accelerator (DAX) cluster in eu-central-1 that caches the us-east-1 table for the European game backend.",
+        "note": "DAX caches reads, but writes still go to the table in us-east-1. European writes would have cross-Region latency and would fail if us-east-1 were unavailable."
+      },
+      {
+        "id": "d",
+        "text": "Use AWS Backup to copy the table to eu-central-1 every hour. Restore the copy and redirect European players if us-east-1 becomes unavailable.",
+        "note": "Backups do not provide a live table in eu-central-1. European players would not get low-latency writes, and a restore would lose up to an hour of data."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "DynamoDB global tables give multi-Region, multi-active replication with no code to manage, which is the standard answer when both Regions must read and write locally and survive a Regional outage. DAX and backups solve read latency and recovery, not active-active writes."
+  },
+  {
+    "id": "resilient-2.2-08",
+    "domain": "resilient",
+    "services": [
+      "Amazon DynamoDB"
+    ],
+    "text": "A retail company stores inventory data in an Amazon DynamoDB global table with replicas in two AWS Regions. Last month a faulty deployment wrote incorrect quantities to thousands of items. The bad writes replicated to both Regions within seconds.\n\nThe company needs the ability to restore the table to its exact state at any second within the previous 7 days.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add a third replica Region to the global table. Restore from that replica if a faulty deployment corrupts data.",
+        "note": "Global table replicas receive every write, including bad ones, within seconds. A replica protects against Regional outages, not against logical corruption."
+      },
+      {
+        "id": "b",
+        "text": "Create an AWS Backup plan that backs up the table once a day and retains each backup for 7 days.",
+        "note": "Daily backups can restore only to the time each backup was taken. They cannot restore to any second within the previous 7 days."
+      },
+      {
+        "id": "c",
+        "text": "Stream all table changes through DynamoDB Streams to Amazon Data Firehose and store them in Amazon S3. Replay the changes to rebuild the table when needed.",
+        "note": "A change log in S3 could rebuild a past state, but the company would have to write and maintain the replay process. This is high operational overhead."
+      },
+      {
+        "id": "d",
+        "text": "Enable point-in-time recovery (PITR) on the table. Restore the table to a new table at the second before the faulty deployment when needed.",
+        "note": "PITR provides continuous backups and restores a table to any second within the recovery period, which can be up to 35 days. It is a single setting with no custom code."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Point-in-time recovery restores a DynamoDB table to any second within its recovery window, which is exactly what is needed to undo bad writes. Global tables replicate corruption as faithfully as good data, so replication is not a backup."
+  },
+  {
+    "id": "resilient-2.2-09",
+    "domain": "resilient",
+    "services": [
+      "Amazon RDS",
+      "AWS Lambda",
+      "Amazon RDS Proxy"
+    ],
+    "text": "A company runs a serverless API. AWS Lambda functions query an Amazon RDS for MySQL Multi-AZ DB instance. During traffic spikes, thousands of concurrent function invocations open new database connections, and the database returns \"too many connections\" errors. During a recent Multi-AZ failover, the API returned errors for several minutes.\n\nThe company wants to reduce connection errors and shorten the disruption during failovers. The API must continue to serve all requests during spikes, and the company does not want to rewrite the application.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Set reserved concurrency on the Lambda functions to a value below the database's maximum number of connections.",
+        "note": "Reserved concurrency caps database connections, but excess requests are throttled during spikes. This violates the requirement to serve all requests and does not shorten failovers."
+      },
+      {
+        "id": "b",
+        "text": "Create an RDS Proxy for the DB instance. Configure the Lambda functions to connect to the proxy endpoint instead of the database endpoint.",
+        "note": "RDS Proxy pools and shares database connections, so spikes do not exhaust the database. The proxy also detects failovers and routes to the new primary without waiting for DNS changes, which reduces failover disruption."
+      },
+      {
+        "id": "c",
+        "text": "Create a read replica of the DB instance in another Availability Zone. Configure the Lambda functions to send read queries to the replica endpoint.",
+        "note": "A read replica spreads read load but each function still opens its own connections. It does not pool connections or shorten Multi-AZ failovers."
+      },
+      {
+        "id": "d",
+        "text": "Modify the DB instance to a larger instance class and raise the max_connections parameter to match the peak concurrency.",
+        "note": "A larger instance accepts more connections at a higher cost, but connection churn remains and failover still depends on DNS propagation to clients."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "RDS Proxy is the managed fix for Lambda connection storms and also reduces failover time by keeping client connections open while it reconnects to the new primary. Throttling or scaling the database treats the symptom without solving both problems."
+  },
+  {
+    "id": "resilient-2.2-10",
+    "domain": "resilient",
+    "services": [
+      "Amazon Route 53",
+      "Amazon S3",
+      "Elastic Load Balancing"
+    ],
+    "text": "A company runs a web application on Amazon EC2 instances behind an Application Load Balancer (ALB) in the us-east-1 Region. The company hosts its DNS in Amazon Route 53.\n\nIf the application becomes unavailable, the company wants users to be sent automatically to a static maintenance page. The maintenance page is hosted as a static website in an Amazon S3 bucket in the us-west-2 Region.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a primary failover alias record that points to the ALB. Set Evaluate Target Health to Yes on the record.",
+        "note": "A primary failover alias record with Evaluate Target Health uses the health of the ALB's targets to decide whether Route 53 answers with the primary."
+      },
+      {
+        "id": "b",
+        "text": "Create a secondary failover alias record that points to the S3 website endpoint in us-west-2.",
+        "note": "Route 53 answers with the secondary failover record only when the primary is unhealthy, which sends users to the maintenance page. For an alias to an S3 website endpoint, the bucket name must match the record name."
+      },
+      {
+        "id": "c",
+        "text": "Create latency alias records that point to the ALB and to the S3 website endpoint.",
+        "note": "Latency routing sends some users to whichever endpoint has lower latency for them, even while the application is healthy. Users could see the maintenance page during normal operation."
+      },
+      {
+        "id": "d",
+        "text": "Create a Route 53 health check that monitors the S3 website endpoint. Associate the health check with the record that points to the ALB.",
+        "note": "The health check must monitor the primary application. Checking the S3 bucket would not detect an application failure."
+      },
+      {
+        "id": "e",
+        "text": "Create a multivalue answer record that contains the IP addresses of the ALB and the S3 website endpoint.",
+        "note": "Multivalue answer records return several healthy values together, so clients would be sent to both endpoints at random. ALB and S3 website IP addresses also change, so they must be referenced through alias records."
+      }
+    ],
+    "correct": [
+      "a",
+      "b"
+    ],
+    "explanation": "Active-passive DNS failover in Route 53 uses a primary failover record with a health signal and a secondary failover record that is returned only when the primary is unhealthy. Latency and multivalue routing are for spreading traffic, not for a standby target."
+  },
+  {
+    "id": "resilient-2.2-11",
+    "domain": "resilient",
+    "services": [
+      "Amazon Route 53",
+      "Elastic Load Balancing"
+    ],
+    "text": "A company runs identical copies of its web application behind Application Load Balancers (ALBs) in the us-east-1 and eu-west-1 Regions. Both copies serve production traffic. Users are located across North America and Europe.\n\nThe company wants each user to be routed to the Region that gives that user the best response time. If the application in one Region becomes unhealthy, all users must be routed to the other Region automatically.\n\nWhich Amazon Route 53 configuration will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create failover alias records. Make the us-east-1 ALB the primary record and the eu-west-1 ALB the secondary record, with Evaluate Target Health enabled.",
+        "note": "Failover routing is active-passive. All users would go to us-east-1 while it is healthy, so European users would not get the best response time."
+      },
+      {
+        "id": "b",
+        "text": "Create weighted alias records with equal weights for the two ALBs, with Evaluate Target Health enabled.",
+        "note": "Weighted routing splits traffic by the configured ratio regardless of where users are. Half of the users would be sent to the more distant Region."
+      },
+      {
+        "id": "c",
+        "text": "Create latency alias records for the two ALBs in their respective Regions, with Evaluate Target Health enabled.",
+        "note": "Latency routing answers with the Region that has the lowest latency for the user. With Evaluate Target Health, Route 53 stops returning an unhealthy Region and sends users to the healthy one."
+      },
+      {
+        "id": "d",
+        "text": "Create geolocation alias records that map North America to the us-east-1 ALB and Europe to the eu-west-1 ALB, without a default record.",
+        "note": "Geolocation routing uses the user's location, not measured latency. Without a default record, users outside the mapped continents receive no answer."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Latency-based routing combined with health evaluation gives an active-active, multi-Region setup: users reach the lowest-latency healthy Region and are moved automatically when a Region fails. Failover routing is the active-passive alternative."
+  },
+  {
+    "id": "resilient-2.2-12",
+    "domain": "resilient",
+    "services": [
+      "Amazon Route 53"
+    ],
+    "text": "A company is replacing its web application with a new version that runs as an immutable stack behind a separate Application Load Balancer in a new AWS account. The company's domain is hosted in Amazon Route 53.\n\nThe company wants to send 5% of users to the new stack at first and then increase the share over 2 weeks. If errors increase, the company must be able to send all traffic back to the old stack quickly without redeploying either stack.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create weighted records for the old and new stacks with weights of 95 and 5. Adjust the weights over time, and set the new stack's weight to 0 to roll back.",
+        "note": "Weighted routing sends a controlled share of DNS answers to each stack. Changing the weights shifts traffic gradually, and a weight of 0 rolls back without touching either stack."
+      },
+      {
+        "id": "b",
+        "text": "Create failover records with the old stack as the primary and the new stack as the secondary. Swap the primary and secondary records to shift traffic.",
+        "note": "Failover routing sends all traffic to one stack at a time. It cannot send 5% of users to the new stack."
+      },
+      {
+        "id": "c",
+        "text": "Create multivalue answer records that contain the endpoints of both stacks. Add more endpoints for the new stack over time.",
+        "note": "Multivalue answer routing returns several values that clients choose from at random. It provides no precise percentage control and would initially send about half the users to the new stack."
+      },
+      {
+        "id": "d",
+        "text": "Create latency records for the old and new stacks. Move the new stack to a Region closer to more users over time.",
+        "note": "Latency routing chooses a stack by network latency, not by a percentage. Moving stacks between Regions would require redeployment."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Route 53 weighted routing is the DNS tool for canary and blue/green cutovers between independent stacks: weights control the share and a weight of 0 removes a stack from rotation. Failover, multivalue, and latency routing cannot set a traffic percentage."
+  },
+  {
+    "id": "resilient-2.2-13",
+    "domain": "resilient",
+    "services": [
+      "Amazon Route 53"
+    ],
+    "text": "A media company must show country-specific content because of licensing agreements. The company uses Amazon Route 53 geolocation records to route users in Germany, France, and the United States to separate application stacks. Each stack is licensed only for its own country.\n\nUsers in other countries currently receive no DNS answer and cannot reach the service. The company wants these users to reach a stack that shows only license-free content. The routing for Germany, France, and the United States must not change.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Replace the geolocation records with geoproximity records for the three stacks. Add a bias to each stack so that it serves users in its own country.",
+        "note": "Geoproximity routing selects a stack by distance, so users near a border could be routed to another country's stack, which breaks the licensing rule. Users in other countries would also reach a licensed stack."
+      },
+      {
+        "id": "b",
+        "text": "Add latency records for the license-free stack with the same record name as the geolocation records.",
+        "note": "Route 53 does not allow records with the same name and type to use different routing policies. The latency records cannot be added beside the geolocation records."
+      },
+      {
+        "id": "c",
+        "text": "Associate a health check with each geolocation record so that Route 53 returns an answer for users from other countries.",
+        "note": "Health checks control whether a healthy record is returned. They do not create an answer for locations that no record matches."
+      },
+      {
+        "id": "d",
+        "text": "Create a geolocation record with the Default location that points to the license-free stack.",
+        "note": "The Default geolocation record answers queries from locations that do not match any other geolocation record. The existing country records are unchanged."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "With geolocation routing, Route 53 returns no answer for unmatched locations unless a Default record exists. Adding a Default record catches everyone else without changing country-specific routing, which geoproximity cannot guarantee."
+  },
+  {
+    "id": "resilient-2.2-14",
+    "domain": "resilient",
+    "services": [
+      "Amazon Route 53",
+      "Amazon CloudWatch"
+    ],
+    "text": "A company runs an internal application on Amazon EC2 instances in private subnets in two VPCs, one in each of two AWS Regions. Employees reach the application through a record in a Route 53 private hosted zone. The application must not be reachable from the internet.\n\nThe company wants Route 53 to answer with the secondary Region's endpoint automatically when the primary Region's application becomes unhealthy.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create Route 53 health checks that monitor the private IP addresses of the primary instances. Associate the health checks with failover records in the private hosted zone.",
+        "note": "Route 53 health checkers run outside the VPC and cannot reach private IP addresses. These health checks would never report the application as healthy."
+      },
+      {
+        "id": "b",
+        "text": "Assign Elastic IP addresses to the primary instances and allow the Route 53 health checker IP ranges in the security groups. Create health checks for the Elastic IP addresses.",
+        "note": "This would make the health checks work, but it exposes the application to the internet. This violates the requirement that the application must not be reachable from the internet."
+      },
+      {
+        "id": "c",
+        "text": "Have the application publish a health metric to CloudWatch from inside the VPC. Create a Route 53 health check that monitors an alarm on the metric and use it on the primary record.",
+        "note": "A Route 53 health check can monitor the state of a CloudWatch alarm instead of an endpoint. This gives Route 53 a health signal for private resources without exposing them."
+      },
+      {
+        "id": "d",
+        "text": "Create a calculated health check that combines child health checks for each primary instance's private IP address. Associate the calculated health check with the primary failover record.",
+        "note": "A calculated health check only aggregates other health checks. The child checks still target private IP addresses that Route 53 health checkers cannot reach."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Route 53 health checkers cannot reach private endpoints, so health for private resources must come from a CloudWatch alarm-based health check. This is the standard way to drive failover records in a private hosted zone."
+  },
+  {
+    "id": "resilient-2.2-15",
+    "domain": "resilient",
+    "services": [
+      "Amazon Route 53",
+      "Amazon EC2"
+    ],
+    "text": "A company runs a lightweight API on six Amazon EC2 instances that each have an Elastic IP address. The company does not want to pay for a load balancer. Today a single Route 53 record contains all six IP addresses. When an instance fails, some clients continue to receive its IP address and their requests fail.\n\nThe company wants DNS to return only the IP addresses of healthy instances.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a multivalue answer record for each instance's IP address and attach a Route 53 health check to each record.",
+        "note": "Multivalue answer routing returns up to eight healthy records for each query and omits records whose health checks fail. It adds only the cost of the health checks."
+      },
+      {
+        "id": "b",
+        "text": "Keep the simple routing record with all six IP addresses. Associate a single Route 53 health check with the record.",
+        "note": "Simple routing records do not support health checks. Route 53 would keep returning all six IP addresses, including failed ones."
+      },
+      {
+        "id": "c",
+        "text": "Create a Network Load Balancer with the instances as targets. Create an alias record that points to the load balancer.",
+        "note": "A Network Load Balancer would route only to healthy targets, but it adds the load balancer cost that the company wants to avoid."
+      },
+      {
+        "id": "d",
+        "text": "Create six weighted records with equal weights, one for each instance's IP address, without health checks.",
+        "note": "Without health checks, Route 53 keeps returning the IP addresses of failed instances. Weighted routing alone does not remove unhealthy endpoints."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Multivalue answer routing with health checks is DNS-level load distribution that skips unhealthy endpoints, without paying for a load balancer. It is not a substitute for a load balancer, but it fits when cost rules one out."
+  },
+  {
+    "id": "resilient-2.2-16",
+    "domain": "resilient",
+    "services": [
+      "AWS Backup",
+      "Amazon EC2",
+      "Amazon RDS"
+    ],
+    "text": "A company runs an internal HR application on Amazon EC2 instances with Amazon EBS volumes and an Amazon RDS for PostgreSQL database in the us-east-1 Region. The company must be able to recover the application in another Region if us-east-1 becomes unavailable.\n\nThe business has approved an RPO of 24 hours and an RTO of 24 hours for this application. The company wants to keep DR costs as low as possible.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a cross-Region read replica of the database in us-west-2. Keep AMIs of the application servers in us-west-2 and launch instances from them during a disaster.",
+        "note": "This is a pilot light strategy. It meets the requirements, but a continuously running read replica costs more than the 24-hour RPO and RTO require."
+      },
+      {
+        "id": "b",
+        "text": "Create an AWS Backup plan that backs up the EC2 instances and the database daily and copies each recovery point to a backup vault in us-west-2. Restore from the copies during a disaster.",
+        "note": "This is a backup and restore strategy. Daily backups copied to another Region meet a 24-hour RPO, restoring takes hours, and the company pays only for backup storage."
+      },
+      {
+        "id": "c",
+        "text": "Run a scaled-down copy of the application and a cross-Region read replica in us-west-2. Scale out the copy during a disaster.",
+        "note": "This is a warm standby strategy. It recovers in minutes, but continuously running compute and database resources cost far more than needed for a 24-hour RTO."
+      },
+      {
+        "id": "d",
+        "text": "Convert the database to a Multi-AZ deployment. Place the EC2 instances in an Auto Scaling group that spans three Availability Zones in us-east-1.",
+        "note": "Multi-AZ and multiple Availability Zones protect against an Availability Zone failure only. They do not allow recovery if the whole Region becomes unavailable."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "When RPO and RTO are measured in hours, backup and restore is the cheapest DR strategy that still works, and AWS Backup copy rules put the recovery points in another Region. Pilot light and warm standby buy faster recovery that this application does not need."
+  },
+  {
+    "id": "resilient-2.2-17",
+    "domain": "resilient",
+    "services": [
+      "Amazon RDS",
+      "AWS CloudFormation",
+      "Amazon EC2 Auto Scaling"
+    ],
+    "text": "A company runs an e-commerce application on Amazon EC2 instances in an Auto Scaling group and an Amazon RDS for MySQL database in the us-east-1 Region. The company is creating a DR plan for a Regional outage.\n\nThe plan requires an RPO of 1 minute and an RTO of 1 hour. The company wants to minimize the cost of resources that run in the DR Region before a disaster occurs.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Back up the database and the EC2 instances every hour with AWS Backup and copy the backups to the DR Region. Restore all resources from the backups during a disaster.",
+        "note": "Hourly backups can lose up to an hour of data, which does not meet the 1-minute RPO."
+      },
+      {
+        "id": "b",
+        "text": "Run a full-capacity copy of the application and a cross-Region read replica in the DR Region. Use Amazon Route 53 to send traffic to both Regions at all times.",
+        "note": "Multi-site active-active meets the targets with near-zero RTO, but running full capacity in two Regions is the most expensive option."
+      },
+      {
+        "id": "c",
+        "text": "Run a cross-Region read replica and a scaled-down Auto Scaling group of application servers in the DR Region. Scale out the group and promote the replica during a disaster.",
+        "note": "Warm standby meets the targets, but keeping application servers running in the DR Region costs more than the 1-hour RTO requires."
+      },
+      {
+        "id": "d",
+        "text": "Create a cross-Region read replica and copy AMIs to the DR Region. In a disaster, promote the replica and create the Auto Scaling group with AWS CloudFormation.",
+        "note": "This is a pilot light strategy. The replica keeps data within seconds of the primary, meeting the 1-minute RPO, and the application tier is created from AMIs and a template within the 1-hour RTO."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Pilot light keeps only the core data layer running in the DR Region and provisions the rest at failover, which fits an RPO of minutes and an RTO of tens of minutes to an hour. Warm standby and active-active also work but cost more than needed."
+  },
+  {
+    "id": "resilient-2.2-18",
+    "domain": "resilient",
+    "services": [
+      "Amazon Aurora",
+      "Amazon EC2 Auto Scaling",
+      "Amazon Route 53"
+    ],
+    "text": "A company's booking application runs on Amazon EC2 instances and an Amazon Aurora MySQL database in the us-east-1 Region. The company's DR plan requires an RTO of 10 minutes and an RPO of a few seconds if us-east-1 fails.\n\nAuditors also require evidence that the DR environment continuously handles real production requests, not only scheduled tests. The company wants to keep costs as low as possible within these requirements.\n\nWhich DR strategy will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Pilot light: Create an Aurora global database with a secondary cluster in us-west-2. Keep AMIs and launch templates in us-west-2, and create the application servers during a disaster.",
+        "note": "Pilot light meets the RPO, but the DR Region has no running application servers, so it cannot continuously handle production requests. Creating the application tier during a disaster also puts the 10-minute RTO at risk."
+      },
+      {
+        "id": "b",
+        "text": "Multi-site active-active: Run full production capacity in us-west-2 and split traffic evenly between the Regions with Route 53 weighted routing.",
+        "note": "Active-active meets every requirement, but running full capacity in both Regions costs more than necessary."
+      },
+      {
+        "id": "c",
+        "text": "Warm standby: Create an Aurora global database with a secondary cluster in us-west-2. Run a small Auto Scaling group in us-west-2 and use Route 53 weighted routing to send it a small share of production traffic.",
+        "note": "Warm standby runs a scaled-down but fully functional copy that serves a small share of live traffic, sending writes to the primary Region (for example with Aurora global database write forwarding). It meets the RPO through Aurora Global Database, meets the RTO because it only needs to scale out, and costs less than full capacity."
+      },
+      {
+        "id": "d",
+        "text": "Backup and restore: Copy Aurora snapshots and AMIs to us-west-2 every hour. Restore the database and launch the application during a disaster.",
+        "note": "Hourly snapshots cannot meet an RPO of a few seconds, and restoring a database and application stack cannot meet a 10-minute RTO."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Warm standby is the cheapest strategy in which the DR environment is always running and can take live traffic, giving an RTO of minutes. Pilot light is cheaper but idle; active-active is always serving at full scale and costs more."
+  },
+  {
+    "id": "resilient-2.2-19",
+    "domain": "resilient",
+    "services": [
+      "Amazon DynamoDB",
+      "Amazon Route 53",
+      "Amazon EC2 Auto Scaling"
+    ],
+    "text": "A stock trading platform runs on Amazon EC2 instances and stores orders in Amazon DynamoDB in a single AWS Region. Regulators require that the platform keep accepting orders with no noticeable interruption if an entire Region fails. Losing even a few seconds of capacity during a failover is unacceptable.\n\nCost is a secondary concern for this platform.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Run the platform at full production capacity in two Regions. Use DynamoDB global tables and Amazon Route 53 latency routing with health checks to send users to both Regions.",
+        "note": "Multi-site active-active keeps full capacity serving traffic in both Regions, with data replicated by global tables. A Regional failure only removes one Region from DNS answers, giving a near-zero RTO."
+      },
+      {
+        "id": "b",
+        "text": "Run a scaled-down copy of the platform in a second Region with DynamoDB global tables. Scale out the second Region when Route 53 health checks detect a failure.",
+        "note": "Warm standby must scale out before it can absorb all traffic, so users would experience reduced capacity during failover. This violates the requirement for no capacity loss."
+      },
+      {
+        "id": "c",
+        "text": "Replicate data to a second Region with DynamoDB global tables. Keep AMIs in the second Region and launch the platform there when Route 53 health checks detect a failure.",
+        "note": "Pilot light keeps data current but must launch the whole application tier at failover. This causes a noticeable interruption."
+      },
+      {
+        "id": "d",
+        "text": "Run the platform at full production capacity across three Availability Zones in one Region. Enable point-in-time recovery on the DynamoDB tables.",
+        "note": "Multiple Availability Zones protect against an Availability Zone failure but not against the loss of the entire Region."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Only multi-site active-active, with full capacity already serving in more than one Region, avoids both downtime and capacity loss when a Region fails. Every cheaper DR strategy trades some recovery time for cost."
+  },
+  {
+    "id": "resilient-2.2-20",
+    "domain": "resilient",
+    "services": [
+      "AWS Elastic Disaster Recovery"
+    ],
+    "text": "A company runs 200 servers with a mix of Windows and Linux operating systems in an on-premises VMware data center. The company wants to use AWS as its disaster recovery site.\n\nThe DR plan requires an RPO of seconds and an RTO of minutes for all servers. The company wants to pay as little as possible for AWS resources until a failover is needed and wants to avoid building custom replication tooling.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Use VM Import/Export to create AMIs from the servers every night. Launch EC2 instances from the latest AMIs during a disaster.",
+        "note": "Nightly images give an RPO of up to 24 hours and require custom scheduling. This does not meet the RPO of seconds."
+      },
+      {
+        "id": "b",
+        "text": "Install the AWS Replication Agent on each server and use AWS Elastic Disaster Recovery to replicate to a low-cost staging area. Launch recovery instances during a disaster.",
+        "note": "Elastic Disaster Recovery replicates block-level changes continuously, giving an RPO of seconds, and keeps only lightweight replication servers and low-cost storage running. It launches full-size recovery instances in minutes when needed."
+      },
+      {
+        "id": "c",
+        "text": "Use AWS Backup for VMware to back up the virtual machines every hour to AWS. Restore the virtual machines as EC2 instances during a disaster.",
+        "note": "Hourly backups can lose up to an hour of data, and restoring 200 servers from backups takes much longer than minutes."
+      },
+      {
+        "id": "d",
+        "text": "Run a full-size copy of each server on Amazon EC2. Use operating system-level scripts to synchronize application data from on premises every minute.",
+        "note": "This could approach the RPO and RTO, but full-size EC2 instances running all the time are expensive, and the custom synchronization scripts are the tooling the company wants to avoid."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "AWS Elastic Disaster Recovery is the managed service for on-premises or cloud servers that need an RPO of seconds and an RTO of minutes, while paying only for a low-cost staging area until failover. Backups and image exports cannot reach a seconds-level RPO."
+  },
+  {
+    "id": "resilient-2.2-21",
+    "domain": "resilient",
+    "services": [
+      "Amazon S3"
+    ],
+    "text": "A healthcare company stores medical imaging files in an Amazon S3 bucket in the us-east-1 Region. A new regulation requires the company to keep a copy of every new object in a second Region. The company must be able to show auditors that 99.99% of new objects are copied within 15 minutes and must be alerted when an object takes longer.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure S3 Same-Region Replication to a second bucket in us-east-1. Enable S3 Replication Time Control on the replication rule.",
+        "note": "Replication Time Control provides the 15-minute SLA and metrics, but Same-Region Replication keeps the copy in us-east-1. This does not meet the second-Region requirement."
+      },
+      {
+        "id": "b",
+        "text": "Configure S3 Cross-Region Replication to a bucket in us-west-2. Use Amazon CloudWatch to compare the object counts of the two buckets every 15 minutes.",
+        "note": "Cross-Region Replication copies most objects within minutes but provides no time guarantee. Comparing object counts cannot show that 99.99% of objects met the 15-minute target or alert on individual late objects."
+      },
+      {
+        "id": "c",
+        "text": "Configure an S3 event notification that invokes an AWS Lambda function to copy each new object to a bucket in us-west-2.",
+        "note": "A custom copy function puts a copy in another Region, but it has no SLA and the company would need to build its own tracking for late or failed copies."
+      },
+      {
+        "id": "d",
+        "text": "Configure S3 Cross-Region Replication to us-west-2 with S3 Replication Time Control enabled, and subscribe to its missed-threshold events.",
+        "note": "S3 Replication Time Control is designed to replicate 99.99% of objects within 15 minutes, backed by an SLA. It provides replication metrics and events for objects that miss the threshold."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "S3 Replication Time Control adds a predictable 15-minute replication SLA, metrics, and missed-threshold events to replication. Plain Cross-Region Replication is asynchronous with no time guarantee, and Same-Region Replication does not leave the Region."
+  },
+  {
+    "id": "resilient-2.2-22",
+    "domain": "resilient",
+    "services": [
+      "Amazon S3"
+    ],
+    "text": "A company has an Amazon S3 bucket that contains 400 million objects. Versioning is enabled. The company just created an S3 Cross-Region Replication rule to a bucket in another Region for DR. New objects are replicating, but the 400 million existing objects are not.\n\nThe replicas of the existing objects must keep the same version IDs and metadata as the source objects.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an S3 Batch Replication job for the existing objects by using the existing replication configuration.",
+        "note": "S3 Batch Replication replicates objects that existed before a replication rule was created. It uses the replication configuration, so replicas keep the source version IDs and metadata, and it runs as a managed job."
+      },
+      {
+        "id": "b",
+        "text": "Create an AWS DataSync task that copies the source bucket to the destination bucket. Run the task once.",
+        "note": "DataSync can copy the existing objects, but it writes them as new objects in the destination, so the replicas get new version IDs. This violates the version ID requirement."
+      },
+      {
+        "id": "c",
+        "text": "Run the AWS CLI aws s3 sync command from an Amazon EC2 instance to copy the existing objects to the destination bucket.",
+        "note": "aws s3 sync creates new objects with new version IDs and requires the company to run and monitor a long-running copy of 400 million objects. This adds operational overhead and breaks the version ID requirement."
+      },
+      {
+        "id": "d",
+        "text": "Edit the replication rule and enable S3 Replication Time Control so that existing objects are replicated within 15 minutes.",
+        "note": "Replication Time Control adds an SLA for new object replication. It does not replicate objects that existed before the rule was created."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Replication rules apply only to objects written after the rule is created; S3 Batch Replication is the managed way to backfill existing objects through the same configuration. Copy tools create new objects with new version IDs instead of true replicas."
+  },
+  {
+    "id": "resilient-2.2-23",
+    "domain": "resilient",
+    "services": [
+      "Amazon S3",
+      "AWS KMS"
+    ],
+    "text": "A company replicates an Amazon S3 bucket in the eu-west-1 Region to a bucket in the eu-central-1 Region by using S3 Cross-Region Replication. Versioning is enabled on both buckets. Objects encrypted with SSE-S3 replicate successfully. Objects encrypted with SSE-KMS by using a customer managed key in eu-west-1 are not replicated.\n\nCompany policy requires that all replicas be encrypted with a customer managed key that the company controls in eu-central-1.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Change the default encryption on the source bucket to SSE-S3 and re-upload the SSE-KMS encrypted objects so that they replicate.",
+        "note": "Objects encrypted with SSE-S3 would replicate, but the replicas would not be encrypted with a company-controlled customer managed key. This violates the encryption policy."
+      },
+      {
+        "id": "b",
+        "text": "Update the replication rule to replicate SSE-KMS encrypted objects and use the source key in eu-west-1 for the replicas. Grant the replication role access to that key.",
+        "note": "The KMS key for replicas must be in the same Region as the destination bucket. A key in eu-west-1 cannot encrypt replicas in eu-central-1, so replication would fail."
+      },
+      {
+        "id": "c",
+        "text": "Update the replication rule to replicate SSE-KMS encrypted objects and use a customer managed key in eu-central-1 for replicas. Grant the replication role access to both keys.",
+        "note": "S3 replicates SSE-KMS encrypted objects only when the rule opts in and names a destination key in the destination Region. The replication role needs kms:Decrypt on the source key and kms:Encrypt on the destination key."
+      },
+      {
+        "id": "d",
+        "text": "Replace the source key with a multi-Region KMS key and create its replica key in eu-central-1. Grant the replication role access to both keys and leave the replication rule unchanged.",
+        "note": "Amazon S3 treats multi-Region keys as single-Region keys. The replication rule must still opt in to SSE-KMS objects and specify the destination key, so without a rule change the objects still do not replicate."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "By default, S3 replication skips objects encrypted with SSE-KMS. The replication rule must opt in and name a replica key that lives in the destination Region, and the replication role must be able to decrypt with the source key and encrypt with the destination key. Multi-Region keys do not remove the need for this configuration."
+  },
+  {
+    "id": "resilient-2.2-24",
+    "domain": "resilient",
+    "services": [
+      "AWS Backup",
+      "AWS Organizations"
+    ],
+    "text": "A company has 30 AWS accounts in an organization in AWS Organizations. The accounts use Amazon EBS volumes, Amazon RDS databases, Amazon DynamoDB tables, and Amazon EFS file systems. A new policy requires daily backups of all these resources, with a copy of every backup stored in a central backup account in a different AWS Region.\n\nThe company wants to manage the backup configuration centrally and avoid writing custom code.\n\nWhich combination of steps will meet these requirements with the LEAST operational overhead? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Enable cross-account management for AWS Backup in the management account. Create an AWS Backup policy in Organizations and attach it to the organizational units that contain the accounts.",
+        "note": "Backup policies in Organizations deploy the same AWS Backup plan to every account in the targeted organizational units and are managed from one place."
+      },
+      {
+        "id": "b",
+        "text": "Add a copy rule to the backup plan in the backup policy that copies each recovery point to a backup vault in the central backup account in the second Region.",
+        "note": "AWS Backup copy rules can copy recovery points across accounts and across Regions in one step, which places a copy of every backup in the central account in another Region. DynamoDB copies require AWS Backup advanced features for DynamoDB to be turned on."
+      },
+      {
+        "id": "c",
+        "text": "Create an Amazon Data Lifecycle Manager policy in each account that creates daily snapshots and copies them to the second Region.",
+        "note": "Data Lifecycle Manager manages EBS snapshots and AMIs only. It does not cover RDS, DynamoDB, or EFS, and it must be configured in each account."
+      },
+      {
+        "id": "d",
+        "text": "Deploy an AWS Lambda function to each account that creates daily snapshots of each resource and shares them with the central account.",
+        "note": "Custom functions could take the backups, but the company would have to write and maintain the code for four services in 30 accounts. This violates the requirement to avoid custom code."
+      },
+      {
+        "id": "e",
+        "text": "Configure S3 Cross-Region Replication on the buckets that store the snapshots so that they are copied to the central account in the second Region.",
+        "note": "EBS, RDS, DynamoDB, and EFS backups are managed by their services and are not stored as objects in customer S3 buckets. S3 replication cannot copy them."
+      }
+    ],
+    "correct": [
+      "a",
+      "b"
+    ],
+    "explanation": "AWS Backup centralizes backups across many services, and Organizations backup policies push one plan to every account. A copy rule then sends each recovery point to a central vault in another account and Region, with no custom code."
+  },
+  {
+    "id": "resilient-2.2-25",
+    "domain": "resilient",
+    "services": [
+      "Amazon EFS",
+      "Amazon EC2 Auto Scaling"
+    ],
+    "text": "A company runs a content management system on Linux Amazon EC2 instances in an Auto Scaling group that spans three Availability Zones. All instances must read and write the same set of uploaded files, and the application uses standard POSIX file operations, including file locking.\n\nThe file storage must remain available if any single Availability Zone fails.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Amazon EFS One Zone file system and mount it on all instances in the Auto Scaling group.",
+        "note": "EFS One Zone stores data in a single Availability Zone. If that Availability Zone fails, the file system becomes unavailable to all instances."
+      },
+      {
+        "id": "b",
+        "text": "Create an Amazon EFS file system with the Regional (Standard) storage classes and a mount target in each Availability Zone. Mount it on all instances.",
+        "note": "A Regional EFS file system stores data redundantly across multiple Availability Zones and supports concurrent POSIX access, including file locking, from instances in every Availability Zone."
+      },
+      {
+        "id": "c",
+        "text": "Create an Amazon EBS Provisioned IOPS SSD (io2) volume with Multi-Attach enabled and attach it to all instances in the Auto Scaling group.",
+        "note": "Multi-Attach works only for instances in the same Availability Zone as the volume, and the volume is lost to all of them if that Availability Zone fails."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon FSx for Lustre scratch file system and mount it on all instances in the Auto Scaling group.",
+        "note": "Scratch file systems are deployed in one Availability Zone and do not replicate data. They are designed for temporary high-performance processing, not durable shared storage."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Amazon EFS with Regional storage is the shared POSIX file system for Linux instances spread across Availability Zones. EBS volumes, including Multi-Attach, and One Zone or scratch file systems are tied to a single Availability Zone."
+  },
+  {
+    "id": "resilient-2.2-26",
+    "domain": "resilient",
+    "services": [
+      "Amazon Aurora"
+    ],
+    "text": "A bank runs an Amazon Aurora MySQL global database with the primary cluster in us-east-1 and a secondary cluster in us-west-2. All clusters are healthy and run the same engine version. A regulator requires the bank to run production from us-west-2 for 3 months each year to prove that its DR process works.\n\nNo committed transactions can be lost when the primary Region changes. After the change, the global database must keep replicating to us-east-1 without being rebuilt.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Detach the us-west-2 cluster from the global database to promote it to a standalone cluster. Then add us-east-1 back to it as a secondary Region.",
+        "note": "Detaching stops replication immediately, so writes not yet replicated can be lost, and the company must rebuild the global database topology by hand. This is the manual method for when managed operations are unavailable."
+      },
+      {
+        "id": "b",
+        "text": "Perform a managed failover with the allow-data-loss option to make the us-west-2 cluster the primary cluster of the global database.",
+        "note": "A managed failover is designed for unplanned outages. It does not wait for the secondary to synchronize, so the RPO is typically a few seconds rather than zero."
+      },
+      {
+        "id": "c",
+        "text": "Take a snapshot of the primary cluster, copy it to us-west-2, and restore it as a new cluster. Point the application at the restored cluster.",
+        "note": "Writes made after the snapshot are lost, the restore causes extended downtime, and the restored cluster is not part of the global database."
+      },
+      {
+        "id": "d",
+        "text": "Perform a switchover on the global database to make the us-west-2 cluster the primary cluster.",
+        "note": "A switchover (formerly managed planned failover) waits for the secondary to be fully synchronized before promoting it, so the RPO is 0. It keeps the existing replication topology, with us-east-1 becoming a secondary."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "For planned Region rotation in Aurora Global Database, use a switchover: it synchronizes first, so no data is lost, and it keeps the global topology. A failover (allow data loss) is for unplanned outages and can lose seconds of writes; detach-and-promote is the manual fallback that breaks replication."
+  },
+  {
+    "id": "resilient-2.2-27",
+    "domain": "resilient",
+    "services": [
+      "Amazon EC2",
+      "Amazon CloudWatch"
+    ],
+    "text": "A company runs a legacy application on a single Amazon EC2 instance with Amazon EBS volumes. The software license is bound to the instance's ID and private IP address, and the license allows only one running instance at a time.\n\nThe company wants the instance to recover automatically if the underlying host hardware fails.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Amazon CloudWatch alarm on the StatusCheckFailed_System metric for the instance with the EC2 recover action.",
+        "note": "The recover action moves the instance to new hardware when a system status check fails. The recovered instance keeps its instance ID, private IP addresses, Elastic IP addresses, and EBS volumes."
+      },
+      {
+        "id": "b",
+        "text": "Create an Auto Scaling group with a minimum, maximum, and desired capacity of 1 that uses a launch template based on an AMI of the instance.",
+        "note": "The Auto Scaling group replaces a failed instance with a new instance that has a new instance ID and a new private IP address. This breaks the license."
+      },
+      {
+        "id": "c",
+        "text": "Launch a second instance from an AMI of the instance in another Availability Zone and keep it stopped. Start it if the first instance fails.",
+        "note": "The second instance has its own instance ID and private IP address, so the license would not work. Starting it is also a manual step."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon Data Lifecycle Manager policy that takes hourly snapshots of the EBS volumes. Restore the volumes to a new instance if the host fails.",
+        "note": "Snapshots protect the data, but restoring to a new instance gives a new instance ID and private IP address and is not automatic."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "EC2 instance recovery is the fix for a single stateful instance that must keep its identity after hardware failure. Supported instance types also get simplified automatic recovery by default; the CloudWatch alarm makes recovery explicit and configurable. An Auto Scaling group gives self-healing too, but it replaces the instance with a new one and a new identity."
+  },
+  {
+    "id": "resilient-2.2-28",
+    "domain": "resilient",
+    "services": [
+      "EC2 Image Builder",
+      "Amazon EC2 Auto Scaling"
+    ],
+    "text": "A company runs a web application on Amazon EC2 instances in an Auto Scaling group. Every month, administrators connect to each instance to install operating system patches and application updates. Over time, the instances have drifted apart in configuration, and several outages were caused by instances that were patched differently.\n\nThe company wants every running instance to be identical and wants to stop making changes to running instances. The solution must require the LEAST operational overhead.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Use AWS Systems Manager Patch Manager with a maintenance window to patch all instances in the Auto Scaling group every month.",
+        "note": "Patch Manager automates patching, but it still changes running instances in place. This does not meet the requirement to stop modifying running instances."
+      },
+      {
+        "id": "b",
+        "text": "Use AWS Systems Manager Run Command to run the same update script on all instances in the Auto Scaling group at the same time.",
+        "note": "Run Command makes the updates consistent, but it still modifies running instances. Drift can return if any command fails on some instances."
+      },
+      {
+        "id": "c",
+        "text": "Use an EC2 Image Builder pipeline to build a patched AMI every month. Update the launch template with the new AMI and start an instance refresh on the Auto Scaling group.",
+        "note": "This is immutable infrastructure: a tested image is built once, and the instance refresh replaces running instances with new ones from that image. Every instance is identical and no running instance is modified."
+      },
+      {
+        "id": "d",
+        "text": "Build a patched AMI manually every month. Terminate the instances one at a time so that the Auto Scaling group launches replacements from the original launch template.",
+        "note": "If the launch template is not updated, the replacements use the old AMI. The manual image builds and terminations also add operational overhead."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Immutable infrastructure replaces instances from a new versioned image instead of patching them in place. EC2 Image Builder automates the image and an instance refresh rolls it out safely, which removes configuration drift."
+  },
+  {
+    "id": "resilient-2.2-29",
+    "domain": "resilient",
+    "services": [
+      "Amazon EC2 Auto Scaling"
+    ],
+    "text": "A company runs a stateless application on Amazon EC2 instances in an Auto Scaling group. Load tests show that the application needs at least 6 instances of the current type to handle peak traffic. The AWS Region that the company uses has four Availability Zones.\n\nThe application must keep at least 6 running instances at all times, even immediately after the loss of any single Availability Zone, before replacements can launch.\n\nWhich Auto Scaling group configuration will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Span two Availability Zones with a minimum capacity of 12 instances, 6 in each Availability Zone.",
+        "note": "Losing one Availability Zone leaves 6 instances, which meets the requirement. However, 12 instances cost more than other configurations that also meet it."
+      },
+      {
+        "id": "b",
+        "text": "Span three Availability Zones with a minimum capacity of 9 instances, 3 in each Availability Zone.",
+        "note": "Losing one Availability Zone leaves 6 instances, which meets the requirement. However, 9 instances cost more than the four-Availability Zone configuration."
+      },
+      {
+        "id": "c",
+        "text": "Span four Availability Zones with a minimum capacity of 8 instances, 2 in each Availability Zone.",
+        "note": "Losing one Availability Zone leaves 6 instances, which meets the requirement with only 8 instances. Spreading capacity across more Availability Zones reduces the spare capacity needed."
+      },
+      {
+        "id": "d",
+        "text": "Span three Availability Zones with a minimum capacity of 6 instances, 2 in each Availability Zone.",
+        "note": "Losing one Availability Zone leaves only 4 instances until replacements launch. This does not meet the requirement."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "To survive an Availability Zone loss with N instances still running, each of the remaining Availability Zones must already carry N divided by (AZs - 1). More Availability Zones means less over-provisioning: 8 instances across four Availability Zones beats 9 across three or 12 across two."
+  },
+  {
+    "id": "resilient-2.2-30",
+    "domain": "resilient",
+    "services": [
+      "Amazon DynamoDB"
+    ],
+    "text": "A fintech company is building a new account-balance service that will store data in a new, empty Amazon DynamoDB table. The service will run active-active in the us-east-1 and us-west-2 Regions.\n\nA strongly consistent read in either Region must always return the latest balance, even when the last write happened in the other Region. If either Region fails, no acknowledged writes can be lost.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a global table in the default multi-Region eventual consistency mode with replicas in us-east-1 and us-west-2. Use strongly consistent reads.",
+        "note": "Eventual consistency mode replicates asynchronously. A strongly consistent read can return stale data if the item was last written in the other Region, and the RPO is greater than zero."
+      },
+      {
+        "id": "b",
+        "text": "Create a global table in multi-Region strong consistency mode with replicas in us-east-1 and us-west-2 and a witness in us-east-2.",
+        "note": "Strong consistency mode replicates each write synchronously to another Region before acknowledging it, so strongly consistent reads in any replica return the latest item and the RPO is zero. Two replicas plus a witness meet the three-Region requirement."
+      },
+      {
+        "id": "c",
+        "text": "Migrate the data to an Amazon Aurora PostgreSQL global database with a secondary cluster in us-west-2 and write forwarding enabled.",
+        "note": "Aurora Global Database replicates asynchronously, typically with lag under a second. It cannot guarantee an RPO of zero or the latest data on reads in the secondary Region."
+      },
+      {
+        "id": "d",
+        "text": "Create a global table in multi-Region strong consistency mode with replicas in us-east-1 and us-west-2 only, without a third Region.",
+        "note": "A strong consistency global table must be deployed in exactly three Regions, as three replicas or two replicas and a witness. A two-Region configuration is not supported."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "DynamoDB global tables in multi-Region strong consistency (MRSC) mode give an RPO of zero and strongly consistent reads in every Region, at the cost of higher write latency. MRSC needs exactly three Regions; a witness can stand in for the third replica. The default eventual consistency mode resolves conflicts by last writer wins and has an RPO of seconds."
+  },
+  {
+    "id": "resilient-2.2-31",
+    "domain": "resilient",
+    "services": [
+      "Amazon VPC"
+    ],
+    "text": "A company runs an application on Amazon EC2 instances in private subnets in three Availability Zones. The instances call a third-party API on the internet. All private subnets use one route table that sends internet-bound traffic to a single NAT gateway in the first Availability Zone.\n\nDuring an outage in the first Availability Zone, instances in the other two Availability Zones lost access to the third-party API. The company wants outbound internet access from each Availability Zone to be independent of failures in other Availability Zones.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a NAT gateway in a public subnet in each of the other two Availability Zones.",
+        "note": "A NAT gateway is redundant only within its own Availability Zone. A NAT gateway in each Availability Zone removes the cross-AZ dependency."
+      },
+      {
+        "id": "b",
+        "text": "Create a separate route table for the private subnets in each Availability Zone that routes 0.0.0.0/0 to the NAT gateway in the same Availability Zone.",
+        "note": "Per-AZ route tables send each Availability Zone's traffic to its local NAT gateway, so an outage in one Availability Zone does not affect outbound access from the others."
+      },
+      {
+        "id": "c",
+        "text": "Create a second NAT gateway in the same public subnet as the existing NAT gateway and split traffic between them.",
+        "note": "Both NAT gateways would be in the first Availability Zone. An outage there would still cut off outbound access for all Availability Zones."
+      },
+      {
+        "id": "d",
+        "text": "Create an internet gateway for each Availability Zone and add a route to it in the private subnets' route table.",
+        "note": "A VPC can have only one internet gateway, and it is already highly available. Routing private subnets to an internet gateway would also make them public subnets."
+      },
+      {
+        "id": "e",
+        "text": "Create an egress-only internet gateway and route the private subnets' outbound traffic to it.",
+        "note": "An egress-only internet gateway supports outbound IPv6 traffic only. It does not provide outbound access for the instances' IPv4 traffic to the API."
+      }
+    ],
+    "correct": [
+      "a",
+      "b"
+    ],
+    "explanation": "NAT gateways are zonal resources. For Availability Zone-independent outbound access, deploy a NAT gateway in each Availability Zone and give each Availability Zone's private subnets a route table that points to the local NAT gateway."
+  },
+  {
+    "id": "resilient-2.2-32",
+    "domain": "resilient",
+    "services": [
+      "Amazon ElastiCache"
+    ],
+    "text": "A company runs a stateless web tier on Amazon EC2 instances across three Availability Zones. User session data is stored in an Amazon ElastiCache (Memcached) cluster with nodes in each Availability Zone. When a cache node fails, the users whose sessions were on that node are logged out.\n\nThe company wants sessions to survive the failure of a cache node or an entire Availability Zone. The solution must require the LEAST operational overhead.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add a second node in each Availability Zone to the Memcached cluster and enable Auto Discovery in the client library.",
+        "note": "Auto Discovery lets clients find nodes as they change, but Memcached partitions data across nodes without replication. Sessions on a failed node are still lost."
+      },
+      {
+        "id": "b",
+        "text": "Enable sticky sessions on the load balancer and store session data in memory on each EC2 instance.",
+        "note": "Sticky sessions tie users to one instance. If that instance or its Availability Zone fails, the sessions are lost."
+      },
+      {
+        "id": "c",
+        "text": "Create an ElastiCache (Redis OSS) cluster with cluster mode enabled and no replicas, and enable daily automatic backups.",
+        "note": "Shards without replicas have nothing to fail over to, and daily backups would restore day-old sessions after a long restore. This does not keep sessions available."
+      },
+      {
+        "id": "d",
+        "text": "Create an ElastiCache (Redis OSS) replication group with Multi-AZ enabled and a replica in each other Availability Zone.",
+        "note": "Redis OSS replicates data to replicas in other Availability Zones. With Multi-AZ automatic failover, a replica is promoted when the primary node or its Availability Zone fails, and sessions remain available."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "ElastiCache for Redis OSS (or Valkey) supports replication and Multi-AZ automatic failover; Memcached does not replicate. For a session store that must survive node or Availability Zone loss, choose a Redis OSS replication group with Multi-AZ."
+  },
+  {
+    "id": "resilient-2.2-33",
+    "domain": "resilient",
+    "services": [
+      "Amazon RDS"
+    ],
+    "text": "A company runs an Amazon RDS for PostgreSQL DB instance in the us-east-1 Region. For DR, the company must be able to restore the database in the us-west-2 Region to any point in time within the previous 7 days. The DR plan accepts an RPO of 2 hours and an RTO of 8 hours.\n\nThe company wants to minimize DR costs.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Enable cross-Region automated backups replication for the DB instance to us-west-2 with a retention period of 7 days.",
+        "note": "Cross-Region automated backups replicate snapshots and transaction logs to us-west-2, which supports point-in-time restores there. The company pays for backup storage and transfer, not for a running DB instance."
+      },
+      {
+        "id": "b",
+        "text": "Create a cross-Region read replica of the DB instance in us-west-2. Promote the replica during a disaster.",
+        "note": "A read replica keeps a current copy, but it costs a full running DB instance and cannot restore to an earlier point in time."
+      },
+      {
+        "id": "c",
+        "text": "Use an AWS Lambda function to create a snapshot of the DB instance every day and copy it to us-west-2. Keep the copies for 7 days.",
+        "note": "Daily snapshots can lose up to 24 hours of data, which misses the 2-hour RPO, and they cannot restore to an arbitrary point in time."
+      },
+      {
+        "id": "d",
+        "text": "Convert the DB instance to a Multi-AZ DB cluster deployment with readable standbys in three Availability Zones.",
+        "note": "A Multi-AZ DB cluster protects against Availability Zone failures but stays in us-east-1, so it does not support recovery in us-west-2."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "RDS cross-Region automated backups give point-in-time restore in a second Region for only the cost of backup storage and transfer. A cross-Region read replica is the choice when the RPO and RTO are minutes; it is more expensive and has no point-in-time restore."
+  },
+  {
+    "id": "resilient-2.2-34",
+    "domain": "resilient",
+    "services": [
+      "Amazon RDS",
+      "Amazon EC2 Auto Scaling",
+      "Elastic Load Balancing"
+    ],
+    "text": "A company runs a web application and its MySQL database on a single Amazon EC2 instance in one Availability Zone. The application's session data is already stored in Amazon DynamoDB. The company wants the application to remain available if an instance or an Availability Zone fails, with minimal ongoing management of the database.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Migrate the database to an Amazon RDS for MySQL Multi-AZ deployment.",
+        "note": "A Multi-AZ deployment keeps a synchronous standby in another Availability Zone and fails over automatically. RDS also manages backups and patching."
+      },
+      {
+        "id": "b",
+        "text": "Run the web tier on EC2 instances in an Auto Scaling group that spans multiple Availability Zones behind an Application Load Balancer.",
+        "note": "Instances in several Availability Zones behind a load balancer keep serving traffic if one instance or Availability Zone fails, and the Auto Scaling group replaces failed instances."
+      },
+      {
+        "id": "c",
+        "text": "Migrate the database to Amazon RDS for MySQL with a read replica in a second Availability Zone.",
+        "note": "A read replica does not fail over automatically. An engineer would have to promote it and reconfigure the application, so the application would be unavailable during an Availability Zone failure."
+      },
+      {
+        "id": "d",
+        "text": "Launch the web tier instances in a cluster placement group that spans two Availability Zones.",
+        "note": "A cluster placement group is limited to a single Availability Zone. It improves network performance, not availability."
+      },
+      {
+        "id": "e",
+        "text": "Move the application to a larger instance type with instance store volumes for the database.",
+        "note": "A larger single instance is still a single point of failure, and instance store data is lost if the instance stops or fails."
+      }
+    ],
+    "correct": [
+      "a",
+      "b"
+    ],
+    "explanation": "Removing single points of failure means a multi-AZ web tier behind a load balancer and a managed database with automatic failover. Read replicas scale reads but require manual promotion, so they are not a high availability mechanism by themselves."
+  },
+  {
+    "id": "resilient-2.2-35",
+    "domain": "resilient",
+    "services": [
+      "Amazon API Gateway",
+      "AWS Lambda",
+      "Amazon DynamoDB",
+      "Amazon Route 53"
+    ],
+    "text": "A company runs a serverless REST API in the us-east-1 Region. The API uses a Regional Amazon API Gateway endpoint with a custom domain name, AWS Lambda functions, and an Amazon DynamoDB table. The company wants the API to keep serving reads and writes if us-east-1 becomes unavailable, with failover to the us-west-2 Region happening automatically.\n\nWhich combination of steps will meet these requirements? (Choose THREE.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Convert the DynamoDB table to a global table with a replica in us-west-2.",
+        "note": "A global table keeps a writable, continuously replicated copy of the data in us-west-2, so the API there can serve reads and writes."
+      },
+      {
+        "id": "b",
+        "text": "Deploy the same API Gateway API and Lambda functions in us-west-2, and configure the same custom domain name on the us-west-2 API.",
+        "note": "A second Regional deployment provides the compute and API layer in us-west-2. Configuring the same custom domain name lets it accept requests for the company's domain."
+      },
+      {
+        "id": "c",
+        "text": "Create Amazon Route 53 failover records for the custom domain name that point to the API endpoints in each Region, with a health check on the us-east-1 API.",
+        "note": "Failover records with a health check send clients to us-west-2 automatically when the us-east-1 API becomes unhealthy."
+      },
+      {
+        "id": "d",
+        "text": "Create an AWS Global Accelerator accelerator with the API Gateway endpoints in both Regions as endpoints.",
+        "note": "Global Accelerator supports Application Load Balancers, Network Load Balancers, EC2 instances, and Elastic IP addresses as endpoints. It cannot use API Gateway APIs directly as endpoints."
+      },
+      {
+        "id": "e",
+        "text": "Enable point-in-time recovery on the DynamoDB table and configure restores into us-west-2.",
+        "note": "Point-in-time recovery protects against data corruption, but a restore is a manual, slow process. It does not provide automatic failover."
+      },
+      {
+        "id": "f",
+        "text": "Configure provisioned concurrency for the Lambda functions in us-east-1.",
+        "note": "Provisioned concurrency reduces cold starts in us-east-1. It does nothing for availability if the Region becomes unavailable."
+      }
+    ],
+    "correct": [
+      "a",
+      "b",
+      "c"
+    ],
+    "explanation": "A multi-Region serverless API needs replicated data (DynamoDB global tables), a deployed stack in the second Region, and DNS failover with health checks. Global Accelerator does not front API Gateway directly, and backups and cold-start tuning do not provide failover."
+  },
+  {
+    "id": "resilient-2.2-36",
+    "domain": "resilient",
+    "services": [
+      "Amazon CloudFront",
+      "Amazon S3"
+    ],
+    "text": "A company serves a static website from an Amazon S3 bucket in the us-east-1 Region through an Amazon CloudFront distribution. During a recent S3 service disruption in us-east-1, users received errors for content that was not in the CloudFront cache.\n\nThe company wants CloudFront to serve the content from another Region automatically when the primary bucket returns errors. The failover must happen within CloudFront so that it does not depend on DNS changes.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a second CloudFront distribution that uses a bucket in us-west-2 as its origin. Use Amazon Route 53 failover records to switch between the two distributions.",
+        "note": "This could fail over, but it depends on DNS changes that clients cache, and the company must manage two distributions and keep the second bucket's content in sync."
+      },
+      {
+        "id": "b",
+        "text": "Configure S3 Cross-Region Replication to a bucket in us-west-2. Create a CloudFront origin group with the us-east-1 bucket as the primary origin and the us-west-2 bucket as the secondary origin, failing over on 5xx status codes.",
+        "note": "Replication keeps the second bucket current, and the origin group makes CloudFront retry the request on the secondary origin when the primary returns the configured error codes. Failover happens inside CloudFront."
+      },
+      {
+        "id": "c",
+        "text": "Create an empty bucket in us-west-2. Create a CloudFront origin group with the us-east-1 bucket as the primary origin and the us-west-2 bucket as the secondary origin, failing over on 5xx status codes.",
+        "note": "The origin group fails over correctly, but the secondary bucket contains no content. Users would receive errors from the secondary origin instead."
+      },
+      {
+        "id": "d",
+        "text": "Increase the default TTL on the distribution's cache behavior to 7 days so that more content is served from the CloudFront cache during an outage.",
+        "note": "A longer TTL keeps more content cached, but requests for content that is not cached still fail when the origin is unavailable."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "CloudFront origin failover uses an origin group to retry a request against a secondary origin when the primary returns specified errors. Pair it with S3 Cross-Region Replication so the secondary origin actually has the content."
+  },
+  {
+    "id": "resilient-2.2-37",
+    "domain": "resilient",
+    "services": [
+      "AWS Global Accelerator",
+      "Elastic Load Balancing",
+      "Amazon Route 53"
+    ],
+    "text": "A gaming company runs a multiplayer game server fleet that uses UDP. The fleet runs behind Network Load Balancers in the us-east-1 and eu-west-1 Regions, and any healthy server in a Region can host any player. Many game clients cache DNS responses for a long time and ignore DNS TTLs.\n\nThe company wants players to be moved to the other Region automatically within about a minute if a Region becomes unhealthy, without changing the game clients.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create Amazon Route 53 failover records for the two Network Load Balancers with health checks and a TTL of 60 seconds.",
+        "note": "DNS failover depends on clients requesting a new DNS answer. Clients that cache DNS and ignore the TTL would keep sending traffic to the failed Region."
+      },
+      {
+        "id": "b",
+        "text": "Create an AWS Global Accelerator custom routing accelerator with an endpoint group in each Region that contains the game servers' VPC subnets.",
+        "note": "A custom routing accelerator maps ports to specific EC2 instances in VPC subnets for matchmaking logic. It does not use Network Load Balancers as endpoints, and the company would have to build port-mapping logic to steer players."
+      },
+      {
+        "id": "c",
+        "text": "Use Amazon Route 53 Application Recovery Controller routing controls to switch Route 53 failover records from us-east-1 to eu-west-1.",
+        "note": "Routing controls give reliable control over which DNS records Route 53 returns, but the failover still happens through DNS answers. Clients that ignore TTLs keep using the cached address."
+      },
+      {
+        "id": "d",
+        "text": "Create an AWS Global Accelerator standard accelerator with an endpoint group in each Region that holds that Region's Network Load Balancer.",
+        "note": "A standard accelerator gives clients static anycast IP addresses that support UDP. It health-checks each endpoint group and shifts traffic to the healthy Region without any DNS change, so cached DNS answers stay valid."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Global Accelerator standard accelerators fail over at the network layer behind static anycast IP addresses, so DNS caching does not matter. Any Route 53-based option, including Application Recovery Controller, still depends on clients fetching new DNS answers; custom routing accelerators are for deterministic matchmaking to specific instances, not load-balanced failover."
+  },
+  {
+    "id": "resilient-2.2-38",
+    "domain": "resilient",
+    "services": [
+      "Amazon EBS",
+      "Amazon Data Lifecycle Manager"
+    ],
+    "text": "A company runs a reporting application on a single Amazon EC2 instance that stores its data on an Amazon EBS gp3 volume. The application can tolerate up to 4 hours of data loss and up to 8 hours of downtime. If the instance's Availability Zone fails, the company must be able to recover the application in another Availability Zone in the same Region.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Use Data Lifecycle Manager to snapshot the volume every 4 hours. Restore the latest snapshot in another Availability Zone if needed.",
+        "note": "EBS snapshots are stored regionally, so they can be restored to a volume in any Availability Zone in the Region. Snapshots every 4 hours meet the RPO, and a restore fits within the 8-hour RTO."
+      },
+      {
+        "id": "b",
+        "text": "Enable EBS Multi-Attach on the volume and attach it to a stopped standby instance in another Availability Zone in the same Region.",
+        "note": "Multi-Attach works only with Provisioned IOPS volumes and only for instances in the same Availability Zone as the volume. It cannot attach a volume across Availability Zones."
+      },
+      {
+        "id": "c",
+        "text": "Attach a second gp3 volume to the instance and mirror the two volumes in a RAID 1 array so that either volume can fail without data loss.",
+        "note": "Both volumes are in the same Availability Zone as the instance. An Availability Zone failure would make both volumes unavailable."
+      },
+      {
+        "id": "d",
+        "text": "Use AWS Elastic Disaster Recovery to continuously replicate the instance to a staging area in another Availability Zone.",
+        "note": "Elastic Disaster Recovery would meet the requirements with an RPO of seconds, but its continuous replication costs more than the 4-hour RPO and 8-hour RTO require."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "EBS volumes live in one Availability Zone, but their snapshots are stored regionally and can be restored in any Availability Zone. Scheduled snapshots are the cheapest way to meet an RPO and RTO measured in hours."
+  },
+  {
+    "id": "resilient-2.2-39",
+    "domain": "resilient",
+    "services": [
+      "Amazon ECS",
+      "AWS Fargate",
+      "Elastic Load Balancing"
+    ],
+    "text": "A company runs a containerized web service on a single Amazon EC2 instance that runs Docker. The service keeps WebSocket connections open to clients for several hours. The instance failed last week and the service was down until an engineer launched a new instance.\n\nThe company wants the service to remain available if an Availability Zone fails. The company does not want to manage servers or operating systems.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Amazon ECS service on Amazon EC2 container instances in an Auto Scaling group that spans three Availability Zones. Run three tasks behind an Application Load Balancer.",
+        "note": "This is highly available, but the company must manage the EC2 container instances and their operating systems."
+      },
+      {
+        "id": "b",
+        "text": "Create an Amazon ECS service on AWS Fargate with all three tasks in a single subnet behind an Application Load Balancer.",
+        "note": "Fargate removes server management, but one subnet is in one Availability Zone. All tasks would stop if that Availability Zone failed."
+      },
+      {
+        "id": "c",
+        "text": "Create an Amazon ECS service on AWS Fargate with subnets in three Availability Zones and a desired count of three tasks behind an Application Load Balancer.",
+        "note": "Amazon ECS spreads the service's tasks across the Availability Zones of the configured subnets and replaces failed tasks. Fargate removes the need to manage servers."
+      },
+      {
+        "id": "d",
+        "text": "Package the service as an AWS Lambda container image. Invoke it through an Amazon API Gateway WebSocket API.",
+        "note": "API Gateway WebSocket APIs with Lambda are serverless and span Availability Zones, but an API Gateway WebSocket connection can stay open for at most 2 hours. Connections that must stay open for several hours would be dropped, and the service would need to be rewritten as Lambda handlers."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "An ECS service on Fargate with subnets in multiple Availability Zones provides Availability Zone-level resilience without server management. The same service in one subnet, or on self-managed EC2 instances, each breaks one requirement."
+  },
+  {
+    "id": "resilient-2.2-40",
+    "domain": "resilient",
+    "services": [
+      "Amazon Aurora"
+    ],
+    "text": "A company runs an Amazon Aurora MySQL DB cluster that has a single writer instance and no Aurora Replicas. When the writer instance failed recently, the database was unavailable for about 10 minutes while Aurora created a new instance.\n\nThe company wants to reduce database downtime when the writer instance or its Availability Zone fails.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an RDS Proxy for the DB cluster and configure the application to connect through the proxy.",
+        "note": "RDS Proxy shortens client-side failover disruption, but there is still no replica to promote. Aurora must still create a new writer instance, so most of the downtime remains."
+      },
+      {
+        "id": "b",
+        "text": "Add an Aurora Replica to the DB cluster in a different Availability Zone from the writer instance.",
+        "note": "When an Aurora Replica exists, Aurora promotes it to writer during a failover, which is much faster than creating a new instance. Placing it in a different Availability Zone also covers an Availability Zone failure."
+      },
+      {
+        "id": "c",
+        "text": "Enable Aurora Backtrack on the DB cluster with a target backtrack window of 24 hours.",
+        "note": "Backtrack rewinds the database to an earlier point in time to undo logical errors. It does not provide a standby instance for failover."
+      },
+      {
+        "id": "d",
+        "text": "Modify the writer instance to a larger instance class so that a replacement instance starts faster.",
+        "note": "The instance class does not meaningfully change how long Aurora takes to create and start a replacement instance. Without a replica, failover still requires creating a new instance."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Aurora storage is already replicated across three Availability Zones, but compute is not: without an Aurora Replica, recovery means creating a new instance. Adding a replica in another Availability Zone gives Aurora a ready target to promote."
+  },
+  {
+    "id": "resilient-2.2-41",
+    "domain": "resilient",
+    "services": [
+      "AWS Elastic Disaster Recovery",
+      "Amazon EC2"
+    ],
+    "text": "A company runs 40 Amazon EC2 instances in the us-east-1 Region. The instances host stateful applications, including several self-managed databases, that store data on Amazon EBS volumes. The company needs a DR solution in the us-east-2 Region.\n\nThe DR plan requires an RPO of seconds and an RTO of minutes. The company wants to keep standby costs low and cannot change the applications.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an AWS Backup plan that backs up the instances every hour and copies each recovery point to us-east-2. Restore the instances during a disaster.",
+        "note": "Hourly backups can lose up to an hour of data, and restoring 40 instances from backups takes longer than minutes."
+      },
+      {
+        "id": "b",
+        "text": "Create an Amazon Data Lifecycle Manager policy that snapshots the EBS volumes every hour and copies the snapshots to us-east-2.",
+        "note": "Hourly snapshots cannot meet an RPO of seconds, and the instances would still need to be rebuilt from the snapshots during a disaster."
+      },
+      {
+        "id": "c",
+        "text": "Run a full-size copy of each instance in us-east-2. Configure application-level replication between each pair of instances.",
+        "note": "Full-size standby instances increase standby costs, and adding application-level replication requires changes that the company cannot make."
+      },
+      {
+        "id": "d",
+        "text": "Use AWS Elastic Disaster Recovery to replicate the instances continuously to a staging area in us-east-2. Launch recovery instances in a disaster.",
+        "note": "Elastic Disaster Recovery supports cross-Region replication of EC2 instances. Continuous block-level replication gives an RPO of seconds, recovery instances launch in minutes, and only a low-cost staging area runs before a disaster."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "AWS Elastic Disaster Recovery works for EC2 instances between Regions as well as for on-premises servers. It replicates at the block level without application changes and keeps standby costs low, while backups and snapshots cannot reach a seconds-level RPO."
+  },
+  {
+    "id": "resilient-2.2-42",
+    "domain": "resilient",
+    "services": [
+      "Amazon S3"
+    ],
+    "text": "A company runs an application in the us-east-1 and us-west-2 Regions that reads and writes objects in Amazon S3. The company wants the application in both Regions to use a single global S3 endpoint. Normally all requests must go to a bucket in us-east-1. If S3 in us-east-1 has problems, the company wants to shift all requests to a bucket in us-west-2 within minutes. Objects written to either bucket must be available in the other bucket.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an S3 Multi-Region Access Point that contains both buckets. Use failover controls to set the us-east-1 bucket as active and the us-west-2 bucket as passive.",
+        "note": "A Multi-Region Access Point gives one global endpoint. Its failover controls route all requests to the active bucket and can shift traffic to the passive bucket within minutes."
+      },
+      {
+        "id": "b",
+        "text": "Configure S3 Cross-Region Replication rules in both directions between the two buckets.",
+        "note": "Two-way replication keeps both buckets in sync, so objects written to either bucket, including writes made after a failover, are available in the other."
+      },
+      {
+        "id": "c",
+        "text": "Configure an S3 Cross-Region Replication rule from the us-east-1 bucket to the us-west-2 bucket only.",
+        "note": "One-way replication copies objects only from us-east-1. Objects written to the us-west-2 bucket after a failover would not be copied back."
+      },
+      {
+        "id": "d",
+        "text": "Enable S3 Transfer Acceleration on the us-east-1 bucket and configure the application to use the accelerated endpoint.",
+        "note": "Transfer Acceleration speeds up long-distance transfers to one bucket. It provides no failover to a bucket in another Region."
+      },
+      {
+        "id": "e",
+        "text": "Create Amazon Route 53 failover records that point to the static website endpoints of the two buckets.",
+        "note": "S3 static website endpoints support only read requests over HTTP. The application could not write objects through them."
+      }
+    ],
+    "correct": [
+      "a",
+      "b"
+    ],
+    "explanation": "S3 Multi-Region Access Points provide a single global endpoint, and failover controls give active-passive routing between buckets. Pair them with two-way replication so that the buckets stay in sync no matter which one is active."
+  },
+  {
+    "id": "resilient-2.2-43",
+    "domain": "resilient",
+    "services": [
+      "Amazon EFS"
+    ],
+    "text": "A company runs a document processing application on Amazon EC2 instances that share an Amazon EFS file system in the eu-west-1 Region. The company needs a copy of the file system in the eu-central-1 Region for DR.\n\nThe DR plan requires an RPO of 30 minutes. The company wants the solution with the LEAST operational overhead.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure Amazon EFS replication from the file system to a destination file system in eu-central-1.",
+        "note": "EFS replication keeps a read-only copy of the file system in another Region and is designed for an RPO of about 15 minutes for most file systems. It is a managed setting with no scheduling to maintain."
+      },
+      {
+        "id": "b",
+        "text": "Create an AWS DataSync task that copies the file system to a file system in eu-central-1. Schedule the task to run every hour.",
+        "note": "DataSync can copy between EFS file systems, but an hourly schedule cannot meet a 30-minute RPO, and the company must manage the task."
+      },
+      {
+        "id": "c",
+        "text": "Create an AWS Backup plan that backs up the file system every hour and copies each backup to eu-central-1.",
+        "note": "Hourly backups plus the copy time give an RPO of more than an hour, which misses the 30-minute RPO."
+      },
+      {
+        "id": "d",
+        "text": "Change the file system to use the EFS Regional storage classes with mount targets in every Availability Zone in eu-west-1.",
+        "note": "Regional storage protects against the loss of an Availability Zone. It does not keep a copy of the data in eu-central-1."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "EFS replication is the managed way to keep an EFS file system copied to another Region with an RPO of minutes. Scheduled copies and backups are bounded by their schedule and need more management."
+  },
+  {
+    "id": "resilient-2.2-44",
+    "domain": "resilient",
+    "services": [
+      "Amazon ElastiCache"
+    ],
+    "text": "A gaming company stores live leaderboards in an Amazon ElastiCache (Redis OSS) cluster with Multi-AZ enabled in the us-east-1 Region. The leaderboard data exists only in the cache, and rebuilding it from game logs takes several hours.\n\nThe company needs a DR plan for a Regional outage with an RPO of seconds and an RTO of minutes. The solution must require the LEAST operational overhead.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Schedule daily ElastiCache backups, export them to Amazon S3, and copy them to the us-west-2 Region. Restore a new cluster from the latest backup during a disaster.",
+        "note": "Daily backups can lose up to a day of data, and creating a new cluster from a backup takes longer than minutes."
+      },
+      {
+        "id": "b",
+        "text": "Change the application to write every update to the existing cluster and to a second ElastiCache (Redis OSS) cluster in the us-west-2 Region.",
+        "note": "Dual writes could meet the RPO, but the company must build and maintain the logic to keep both clusters consistent when writes fail. This adds operational overhead."
+      },
+      {
+        "id": "c",
+        "text": "Create an ElastiCache (Redis OSS) Global Datastore with the existing cluster as the primary and a secondary cluster in the us-west-2 Region. Promote the secondary cluster during a disaster.",
+        "note": "Global Datastore provides fully managed cross-Region replication, typically with less than 1 second of lag. The secondary cluster can be promoted to primary in minutes or less."
+      },
+      {
+        "id": "d",
+        "text": "Add replicas to the existing cluster in all Availability Zones in us-east-1 and enable automatic failover.",
+        "note": "More replicas improve resilience to node and Availability Zone failures, but all of them are in us-east-1. They do not protect against a Regional outage."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "ElastiCache Global Datastore is the managed cross-Region replication feature for Redis OSS, giving an RPO of about a second and fast promotion. Multi-AZ replicas handle Availability Zone failures only, and backups cannot meet a seconds-level RPO."
+  },
+  {
+    "id": "resilient-2.2-45",
+    "domain": "resilient",
+    "services": [
+      "Amazon Route 53",
+      "Elastic Load Balancing",
+      "Amazon RDS"
+    ],
+    "text": "A company uses Amazon Route 53 failover routing for a web application. The primary alias record points to an Application Load Balancer (ALB) in the us-east-1 Region with Evaluate Target Health enabled. The secondary record points to a standby environment in the us-west-2 Region. The ALB target group health check requests the path /, which returns a static page.\n\nLast week the application's database in us-east-1 failed. Users received errors for an hour, but Route 53 did not fail over. The company wants Route 53 to fail over whenever the application in us-east-1 cannot process requests, including when a dependency such as the database fails.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Reduce the TTL of the failover records to 10 seconds so that clients receive the secondary record sooner.",
+        "note": "A shorter TTL speeds up failover once Route 53 decides the primary is unhealthy. It does not change how health is detected, so Route 53 would still not fail over."
+      },
+      {
+        "id": "b",
+        "text": "Add a /health path to the application that tests its database connection. Create a Route 53 health check that requests /health through the ALB and associate it with the primary record.",
+        "note": "A health check that exercises the application's dependencies fails when the database is unavailable. Route 53 then treats the primary record as unhealthy and answers with the secondary record."
+      },
+      {
+        "id": "c",
+        "text": "Create a Route 53 health check that requests the path / through the ALB and associate it with the primary record.",
+        "note": "The / path returns a static page that does not touch the database. The health check would keep passing during a database failure."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon CloudWatch alarm on the ALB's HealthyHostCount metric. Create a Route 53 health check that monitors the alarm and associate it with the primary record.",
+        "note": "The targets keep passing the ALB's / health check during a database failure, so HealthyHostCount stays normal and the alarm never fires."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "DNS failover is only as good as the health signal behind it. A shallow health check on a static page cannot detect dependency failures; a health check against an endpoint that exercises the critical dependencies makes Route 53 fail over when the application cannot actually serve requests."
+  }
+]

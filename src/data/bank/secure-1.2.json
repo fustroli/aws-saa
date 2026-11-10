@@ -1,0 +1,1487 @@
+[
+  {
+    "id": "secure-1.2-01",
+    "domain": "secure",
+    "services": [
+      "Amazon VPC",
+      "Amazon Aurora",
+      "Amazon EC2 Auto Scaling"
+    ],
+    "text": "A company runs a three-tier application in a VPC. The application tier runs on Amazon EC2 instances in an Auto Scaling group that scales in and out many times each day, so instance IP addresses change constantly. The database tier is an Amazon Aurora MySQL DB cluster in private subnets. The application tier subnets also host batch-processing instances that must not be able to connect to the database.\n\nA solutions architect must ensure that the DB cluster accepts connections only from the application tier instances on port 3306.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure the network ACL of the database subnets to allow inbound TCP 3306 from the CIDR blocks of the application tier subnets and to deny all other inbound traffic.",
+        "note": "Network ACLs filter by CIDR block at the subnet boundary. The batch-processing instances share the application subnets, so a subnet-level rule would still let them reach the database."
+      },
+      {
+        "id": "b",
+        "text": "Add an inbound rule to the database security group that allows TCP 3306 from the CIDR blocks of the application tier subnets. Remove all other inbound rules.",
+        "note": "This restricts access to the correct port, but a CIDR-based rule matches every instance in those subnets, including the batch-processing instances that must be blocked."
+      },
+      {
+        "id": "c",
+        "text": "Add an inbound rule to the database security group that allows TCP 3306 from the security group of the application tier instances. Remove all other inbound rules.",
+        "note": "A security group rule can reference another security group as its source. Only instances that carry the application tier security group can connect, regardless of their changing IP addresses, and no ongoing maintenance is needed."
+      },
+      {
+        "id": "d",
+        "text": "Use an Auto Scaling lifecycle hook to invoke an AWS Lambda function that adds and removes /32 rules for each application instance in the database security group.",
+        "note": "This would restrict access to the application instances, but it requires custom code that must run on every scaling event and can hit the security group rule quota. It has far more operational overhead than referencing a security group."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Security groups can use another security group as a rule source, so membership in the application tier security group, not IP address, grants access. This handles constantly changing instance IPs with no maintenance and excludes other instances in the same subnets. CIDR-based rules in security groups or network ACLs cannot tell apart instances that share a subnet."
+  },
+  {
+    "id": "secure-1.2-02",
+    "domain": "secure",
+    "services": [
+      "Amazon VPC",
+      "Amazon EC2",
+      "AWS WAF"
+    ],
+    "text": "A company hosts a public web application on Amazon EC2 instances that have Elastic IP addresses in a public subnet. There is no load balancer. The security group allows inbound HTTPS from 0.0.0.0/0, and the subnet uses a custom network ACL whose rule 100 allows all inbound HTTPS traffic.\n\nThe security team has identified malicious traffic from the 198.51.100.0/24 address range. The company must block this range immediately while all other internet users keep access to the application.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add an inbound rule to the instances' security group that denies all traffic from 198.51.100.0/24.",
+        "note": "Security groups support only allow rules. A deny rule cannot be added to a security group."
+      },
+      {
+        "id": "b",
+        "text": "Create an AWS WAF web ACL with an IP set rule that blocks 198.51.100.0/24. Associate the web ACL with the EC2 instances.",
+        "note": "AWS WAF can be associated with CloudFront, Application Load Balancers, API Gateway, AppSync, and similar resources, but not directly with EC2 instances. Without a supported resource in front of the instances, this cannot be applied."
+      },
+      {
+        "id": "c",
+        "text": "Add an inbound rule numbered 200 to the subnet's network ACL that denies all traffic from 198.51.100.0/24.",
+        "note": "Network ACL rules are evaluated in ascending order and the first match wins. Rule 100 allows the HTTPS traffic before rule 200 is evaluated, so the malicious traffic is still allowed."
+      },
+      {
+        "id": "d",
+        "text": "Add an inbound rule numbered 50 to the subnet's network ACL that denies all traffic from 198.51.100.0/24.",
+        "note": "Network ACLs support explicit deny rules and evaluate rules in ascending order. A deny rule with a lower number than the allow rule blocks the range while rule 100 continues to allow everyone else."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "To block specific addresses, use a network ACL deny rule, because security groups have no deny rules. Network ACL rules are processed lowest number first and stop at the first match, so the deny rule must have a lower number than the broad allow rule. AWS WAF would also work, but only on a supported resource such as an ALB or CloudFront, not on bare EC2 instances."
+  },
+  {
+    "id": "secure-1.2-03",
+    "domain": "secure",
+    "services": [
+      "Amazon VPC",
+      "Elastic Load Balancing"
+    ],
+    "text": "An application runs on Amazon EC2 instances in private subnets behind an internet-facing Application Load Balancer (ALB) that listens on HTTPS. The ALB forwards requests to the instances on TCP port 8080. A network engineer applied a new custom network ACL to the private subnets. Its inbound rules allow TCP 8080 from the ALB subnet CIDR blocks. Its outbound rules allow TCP 443 to 0.0.0.0/0 so that the instances can call an external API.\n\nSince the change, ALB health checks fail and users receive HTTP 502 errors. The security groups have not changed and are configured correctly.\n\nWhich change will resolve the issue?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add an outbound rule to the network ACL that allows TCP ports 1024-65535 to the ALB subnet CIDR blocks.",
+        "note": "Network ACLs are stateless, so response traffic needs its own rule. The instances reply to the ALB on the ALB's ephemeral source ports, so an outbound rule for 1024-65535 to the ALB subnets restores the return path."
+      },
+      {
+        "id": "b",
+        "text": "Add an inbound rule to the network ACL that allows TCP ports 1024-65535 from the ALB subnet CIDR blocks.",
+        "note": "Inbound requests from the ALB on port 8080 are already allowed. The failure is in the response direction, which is outbound from the private subnets, so an inbound rule does not fix it."
+      },
+      {
+        "id": "c",
+        "text": "Add an outbound rule to the network ACL that allows TCP port 8080 to the ALB subnet CIDR blocks.",
+        "note": "Outbound network ACL rules match the destination port. Responses from the instances leave from port 8080 but are sent to the ALB's ephemeral ports, so a rule for destination port 8080 does not match them."
+      },
+      {
+        "id": "d",
+        "text": "Add an outbound rule to the instances' security group that allows TCP ports 1024-65535 to the ALB security group.",
+        "note": "Security groups are stateful and already allow responses to permitted inbound traffic. The traffic is being dropped by the stateless network ACL, which this change does not affect."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Network ACLs are stateless: return traffic must be explicitly allowed in the opposite direction, and it is addressed to the client's ephemeral port range, not to the service port. Here the client is the ALB, so the private subnets need an outbound rule for 1024-65535 to the ALB subnets. Security groups are stateful and never need rules for response traffic."
+  },
+  {
+    "id": "secure-1.2-04",
+    "domain": "secure",
+    "services": [
+      "Amazon VPC",
+      "NAT gateway"
+    ],
+    "text": "A company runs application servers on Amazon EC2 instances in private subnets across three Availability Zones. The instances must download operating system patches from the internet. Security policy states that the instances must not have public IP addresses and must not accept connections that are initiated from the internet. Outbound internet access must continue to work if any single Availability Zone fails.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create one NAT gateway in a public subnet in one Availability Zone. Route 0.0.0.0/0 from the route tables of all private subnets to the NAT gateway.",
+        "note": "A NAT gateway is redundant only within its own Availability Zone. If that Availability Zone fails, the private subnets in the other two Availability Zones lose outbound internet access."
+      },
+      {
+        "id": "b",
+        "text": "Create a NAT gateway in a public subnet in each Availability Zone. Route 0.0.0.0/0 from each private subnet route table to the NAT gateway in the same Availability Zone.",
+        "note": "NAT gateways are managed and allow only outbound-initiated connections. One per Availability Zone, with zone-local routing, keeps the other zones working when one zone fails."
+      },
+      {
+        "id": "c",
+        "text": "Launch a NAT instance in a public subnet in each Availability Zone, each in its own Auto Scaling group with a size of one. Route each private subnet to the NAT instance in its Availability Zone.",
+        "note": "NAT instances can provide zone-independent outbound access, but the company must patch, scale, and fail over the instances and update routes on replacement. This adds operational overhead compared with NAT gateways."
+      },
+      {
+        "id": "d",
+        "text": "Route 0.0.0.0/0 from the private subnet route tables to the internet gateway. Restrict the instances' security group to allow only outbound traffic.",
+        "note": "Routing through an internet gateway requires the instances to have public IP addresses, which the policy forbids, and turns the subnets into public subnets."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "A NAT gateway is a managed, zonal resource, so a highly available design places one NAT gateway in each Availability Zone and routes each private subnet to its local gateway. A single shared NAT gateway is a single-AZ point of failure, and NAT instances meet the requirement only with extra operational work."
+  },
+  {
+    "id": "secure-1.2-05",
+    "domain": "secure",
+    "services": [
+      "AWS Secrets Manager",
+      "AWS KMS",
+      "AWS Lambda",
+      "AWS IAM"
+    ],
+    "text": "A company's central data team owns an Amazon RDS for MySQL database in Account A. The database credentials are stored in an AWS Secrets Manager secret in Account A. The secret is encrypted with the AWS managed key aws/secretsmanager and is rotated automatically. An AWS Lambda function in Account B must read the current credentials at runtime. The security team does not allow copies of the credentials to be stored outside Account A.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Attach a resource policy to the secret that allows secretsmanager:GetSecretValue for the Lambda execution role in Account B. Grant the same permission in the role's IAM policy.",
+        "note": "Cross-account access does need both a resource policy and an identity policy. However, the AWS managed key aws/secretsmanager cannot be used for cross-account access, so the role in Account B still cannot decrypt the secret value."
+      },
+      {
+        "id": "b",
+        "text": "Re-encrypt the secret with a customer managed KMS key whose key policy allows kms:Decrypt for the Lambda role. Allow the role in the secret's resource policy and IAM policy.",
+        "note": "A customer managed key can grant kms:Decrypt to a principal in another account. Together with the secret's resource policy and the role's identity policy, the function reads the current value directly from Account A, and no copy is made."
+      },
+      {
+        "id": "c",
+        "text": "Replicate the secret to Account B by using Secrets Manager secret replication. Have the Lambda function read the replica secret in its own account by using its execution role.",
+        "note": "Secrets Manager replication copies a secret to other AWS Regions in the same account, not to other accounts. A replica would also be a copy of the credentials outside the primary secret."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon EventBridge rule for the secret's rotation events that invokes a Lambda function to write each new value to a secret in Account B for the function to read.",
+        "note": "This stores a copy of the credentials in Account B, which the security team forbids. It also adds custom synchronization code that can fail and leave a stale password."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Secrets Manager supports cross-account access when three things line up: a resource policy on the secret, an identity policy on the caller, and a KMS key policy that lets the caller decrypt. The AWS managed key aws/secretsmanager cannot be shared across accounts, so the secret must use a customer managed key. Replication is cross-Region within one account, not cross-account."
+  },
+  {
+    "id": "secure-1.2-06",
+    "domain": "secure",
+    "services": [
+      "Amazon VPC",
+      "Amazon S3",
+      "AWS Direct Connect",
+      "AWS PrivateLink"
+    ],
+    "text": "A company has an AWS Direct Connect connection with a private virtual interface to a VPC. On-premises servers must upload files to an Amazon S3 bucket in the same AWS Region. The traffic must travel over the Direct Connect connection and must not traverse the public internet. The network team will not create a public virtual interface because policy forbids advertising public AWS prefixes into the corporate network.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a gateway VPC endpoint for Amazon S3 in the VPC. Configure on-premises routing to send S3 traffic over the private virtual interface to the endpoint.",
+        "note": "Gateway endpoints work only through VPC route tables for traffic that originates inside the VPC. They cannot be reached from on-premises networks over Direct Connect or VPN."
+      },
+      {
+        "id": "b",
+        "text": "Deploy a fleet of proxy servers on Amazon EC2 in the VPC that forward uploads to Amazon S3 through a gateway VPC endpoint.",
+        "note": "This keeps traffic private, but the company must build, scale, patch, and keep the proxy fleet highly available. It has more operational overhead than a managed interface endpoint."
+      },
+      {
+        "id": "c",
+        "text": "Enable S3 Transfer Acceleration on the bucket. Configure the on-premises servers to upload to the accelerated endpoint.",
+        "note": "Transfer Acceleration uses public CloudFront edge locations reached over the internet. It does not use the private virtual interface."
+      },
+      {
+        "id": "d",
+        "text": "Create an interface VPC endpoint for Amazon S3 in the VPC. Configure the on-premises servers to use the endpoint-specific DNS names over the private virtual interface.",
+        "note": "Interface endpoints (AWS PrivateLink) have private IP addresses in the VPC, so on-premises clients can reach them over a private virtual interface. This keeps traffic on Direct Connect without a public virtual interface."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Interface VPC endpoints for S3 are ENIs with private IPs, so on-premises networks connected through Direct Connect or VPN can reach them. Gateway endpoints are route-table targets that serve only traffic from inside the VPC. This difference is the usual reason to choose an interface endpoint for S3 despite its cost."
+  },
+  {
+    "id": "secure-1.2-07",
+    "domain": "secure",
+    "services": [
+      "AWS PrivateLink",
+      "Elastic Load Balancing",
+      "Amazon VPC"
+    ],
+    "text": "A software-as-a-service (SaaS) provider runs an API on Amazon EC2 instances in its own VPC. Hundreds of customers, each in their own AWS accounts, need to call the API from their VPCs. Many customer VPCs use CIDR ranges that overlap with the provider's VPC and with each other. Traffic must stay on the AWS network, and customers must be able to reach only the API, not any other resources in the provider's VPC.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Place a Network Load Balancer in front of the API and create a VPC endpoint service. Have each customer create an interface endpoint to the service.",
+        "note": "AWS PrivateLink exposes a single service through an NLB. Consumers reach it through endpoint ENIs in their own VPCs, so overlapping CIDRs do not matter and nothing else in the provider VPC is reachable."
+      },
+      {
+        "id": "b",
+        "text": "Create a VPC peering connection with each customer VPC. Use security groups in the provider VPC to allow access only to the API instances.",
+        "note": "VPC peering does not support overlapping CIDR blocks, and peering opens routing between whole VPCs. Managing hundreds of peering connections also adds significant overhead."
+      },
+      {
+        "id": "c",
+        "text": "Create a transit gateway and share it with customer accounts by using AWS Resource Access Manager. Attach the provider VPC and each customer VPC.",
+        "note": "Transit Gateway routes between attached VPCs and cannot route correctly between overlapping CIDR ranges. It also connects networks rather than exposing one service."
+      },
+      {
+        "id": "d",
+        "text": "Place an internet-facing Application Load Balancer in front of the API. Use AWS WAF to allow requests only from the customers' NAT gateway IP addresses.",
+        "note": "This restricts callers, but the traffic would travel over the public internet, which breaks the requirement to stay on the AWS network."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "AWS PrivateLink (an endpoint service behind an NLB, consumed through interface endpoints) is the pattern for exposing one service privately to many VPCs. It works with overlapping CIDRs and exposes only that service. Peering and Transit Gateway connect entire networks and require non-overlapping address space."
+  },
+  {
+    "id": "secure-1.2-08",
+    "domain": "secure",
+    "services": [
+      "AWS Lambda",
+      "Amazon SQS",
+      "AWS KMS",
+      "Amazon VPC"
+    ],
+    "text": "A company runs AWS Lambda functions that are connected to private subnets so that they can query an Amazon RDS database in those subnets. The functions must also send messages to an Amazon SQS queue and call AWS KMS to decrypt data. Security policy forbids any route from the VPC to the internet, so the VPC has no internet gateway or NAT gateway.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create gateway VPC endpoints for Amazon SQS and AWS KMS. Add the endpoints to the route tables of the Lambda subnets.",
+        "note": "Gateway endpoints exist only for Amazon S3 and Amazon DynamoDB. Amazon SQS and AWS KMS can be reached privately only through interface endpoints."
+      },
+      {
+        "id": "b",
+        "text": "Create interface VPC endpoints for Amazon SQS and AWS KMS with private DNS enabled. Allow HTTPS from the Lambda security group in the endpoints' security group.",
+        "note": "Interface endpoints give the VPC private access to SQS and KMS. With private DNS, the default SDK endpoints resolve to the endpoint IP addresses, so no code changes are needed."
+      },
+      {
+        "id": "c",
+        "text": "Add a NAT gateway and an internet gateway. Use a network ACL to allow outbound traffic only to the published AWS IP address ranges.",
+        "note": "This creates a route to the internet, which the policy forbids. Keeping a network ACL in sync with AWS IP ranges also adds ongoing work."
+      },
+      {
+        "id": "d",
+        "text": "Remove the VPC configuration from the Lambda functions so that they use the Lambda service network to reach Amazon SQS and AWS KMS.",
+        "note": "Without a VPC connection, the functions could reach SQS and KMS but could no longer reach the RDS database in the private subnets."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "AWS services other than S3 and DynamoDB are reached privately through interface VPC endpoints (PrivateLink). With private DNS enabled, existing code works without changes. Gateway endpoints are limited to S3 and DynamoDB, a common trap."
+  },
+  {
+    "id": "secure-1.2-09",
+    "domain": "secure",
+    "services": [
+      "Amazon S3",
+      "Amazon VPC"
+    ],
+    "text": "A company stores confidential financial reports in an Amazon S3 bucket. An analytics application on Amazon EC2 instances in a private subnet accesses the bucket through a gateway VPC endpoint. The security team requires that the bucket be accessible only through that VPC endpoint. Requests from anywhere else must be denied, even if they come from IAM principals in the same account that have s3:* permissions.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Turn on S3 Block Public Access for the bucket and for the account.",
+        "note": "S3 Block Public Access prevents public access through ACLs and bucket policies. It does not deny authenticated IAM principals in the account who call S3 from outside the VPC."
+      },
+      {
+        "id": "b",
+        "text": "Add a bucket policy statement that denies all S3 actions when the aws:SourceIp condition key does not match the VPC CIDR block.",
+        "note": "For requests that arrive through a VPC endpoint, aws:SourceIp does not contain the requester's private IP address (aws:VpcSourceIp does). This policy would therefore deny the application's legitimate requests as well."
+      },
+      {
+        "id": "c",
+        "text": "Add a bucket policy statement that denies all S3 actions when the aws:SourceVpce condition key does not match the ID of the gateway VPC endpoint.",
+        "note": "An explicit deny in the bucket policy overrides any IAM allow. The aws:SourceVpce key identifies requests that arrive through the specific endpoint, so all other paths are denied."
+      },
+      {
+        "id": "d",
+        "text": "Attach an endpoint policy to the gateway VPC endpoint that allows access only to the confidential reports bucket.",
+        "note": "An endpoint policy controls which resources can be reached through the endpoint. It does not stop principals from reaching the bucket through other paths, such as from the internet."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "To lock a bucket to a VPC endpoint, use a bucket policy with an explicit Deny and the aws:SourceVpce (or aws:SourceVpc) condition, which beats any IAM allow. Endpoint policies restrict what can be reached through the endpoint. Bucket policies restrict where the bucket can be reached from."
+  },
+  {
+    "id": "secure-1.2-10",
+    "domain": "secure",
+    "services": [
+      "AWS WAF",
+      "Elastic Load Balancing",
+      "AWS Shield"
+    ],
+    "text": "A company's login page runs on Amazon EC2 instances behind an Application Load Balancer. The page is receiving credential-stuffing traffic from a constantly changing set of IP addresses. Each attacking IP address sends thousands of requests within a few minutes. Legitimate users rarely send more than 50 requests in 5 minutes.\n\nThe company wants to automatically block any IP address that sends more than 500 requests in 5 minutes, and to unblock it when its request rate drops.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an AWS WAF web ACL with an IP set rule that blocks the attacking addresses. Have the security team update the IP set when new attackers appear.",
+        "note": "An IP set blocks known addresses only. The attackers' addresses keep changing, so manual updates cannot keep up and nothing unblocks addresses automatically."
+      },
+      {
+        "id": "b",
+        "text": "Rely on AWS Shield Standard, which is included at no extra cost, to detect and block the high request rates.",
+        "note": "Shield Standard protects against common network and transport layer DDoS attacks. It does not rate-limit individual clients at the HTTP layer."
+      },
+      {
+        "id": "c",
+        "text": "Use an AWS Lambda function that parses ALB access logs every 5 minutes and adds deny rules for offending IP addresses to the subnet network ACL.",
+        "note": "This would work partly, but it requires custom code and log processing. Network ACLs also have a small rule quota, which a changing set of attacker addresses would quickly exhaust."
+      },
+      {
+        "id": "d",
+        "text": "Create an AWS WAF web ACL with a rate-based rule that blocks IP addresses exceeding 500 requests in a 5-minute window. Associate it with the ALB.",
+        "note": "A rate-based rule tracks request rates per IP address, blocks addresses that exceed the limit, and stops blocking them automatically when their rate falls below it. It is fully managed."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "AWS WAF rate-based rules count requests per client IP over a time window and automatically block and release addresses as their rates change. This makes them the managed answer to HTTP floods and brute-force traffic from changing sources. Shield handles network-layer DDoS, and IP sets handle known, static addresses."
+  },
+  {
+    "id": "secure-1.2-11",
+    "domain": "secure",
+    "services": [
+      "AWS WAF",
+      "Elastic Load Balancing",
+      "Amazon CloudFront",
+      "Amazon Route 53"
+    ],
+    "text": "A media company streams licensed content from Amazon EC2 instances behind an internet-facing Application Load Balancer (ALB). Users reach the ALB through an Amazon Route 53 alias record. A new licensing agreement requires the company to block all requests that originate from three specific countries. The company wants to keep its current architecture as unchanged as possible.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an AWS WAF web ACL with a geographic match rule that blocks requests from the three countries. Associate the web ACL with the ALB.",
+        "note": "AWS WAF can be associated directly with an ALB, and geographic match rules block requests based on the client's country. This needs no new components and blocks every request that reaches the ALB."
+      },
+      {
+        "id": "b",
+        "text": "Create an Amazon CloudFront distribution with the ALB as its origin. Enable CloudFront geographic restrictions for the three countries and point the Route 53 record to the distribution.",
+        "note": "CloudFront geographic restrictions work, but this adds a new distribution and DNS changes. Users could also still bypass CloudFront by calling the ALB directly unless more controls are added."
+      },
+      {
+        "id": "c",
+        "text": "Change the Route 53 record to use a geolocation routing policy that has records only for allowed countries and no default record.",
+        "note": "Geolocation routing only changes DNS answers, and it estimates the user's location from the resolver's IP address or the EDNS0 client subnet. Anyone who knows the ALB's DNS name or IP addresses can still send requests to it, so it cannot enforce a block."
+      },
+      {
+        "id": "d",
+        "text": "Add inbound rules to the ALB security group that deny the published IP address ranges of the three countries.",
+        "note": "Security groups do not support deny rules. Maintaining country IP ranges by hand would also be error-prone."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "AWS WAF geographic match rules attached to the existing ALB enforce country blocking at the application entry point with no architectural change. CloudFront geographic restrictions are the alternative when CloudFront is already in place. DNS-based geolocation and security groups cannot enforce a country block."
+  },
+  {
+    "id": "secure-1.2-12",
+    "domain": "secure",
+    "services": [
+      "AWS Shield",
+      "Amazon CloudFront",
+      "AWS Global Accelerator",
+      "Amazon Route 53"
+    ],
+    "text": "An online gaming company serves its platform through Amazon CloudFront and AWS Global Accelerator in front of Amazon EC2 instances. During a recent DDoS attack, nobody noticed degraded performance for 40 minutes, and the Auto Scaling groups scaled out sharply and increased the AWS bill. The company already meets the AWS Support plan prerequisites for Shield Response Team (SRT) engagement.\n\nFor future attacks, AWS DDoS specialists must contact the operations team as soon as an attack affects application health. The company also wants credits for scaling charges that DDoS attacks cause.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Subscribe to AWS Shield Advanced and protect the distribution and the accelerator. Have the operations team contact the SRT through AWS Support when it detects an attack.",
+        "note": "Shield Advanced provides cost protection and SRT access, but here the company must notice the attack and reach out first. The SRT contacts the company directly only when proactive engagement is turned on with health checks."
+      },
+      {
+        "id": "b",
+        "text": "Subscribe to AWS Shield Advanced and protect the distribution and the accelerator. Associate Route 53 health checks with the protections and turn on proactive engagement.",
+        "note": "With proactive engagement, the SRT contacts the company's listed contacts when a Shield Advanced detected event affects the health of a protected resource, as shown by its associated Route 53 health check. Shield Advanced also adds DDoS cost protection."
+      },
+      {
+        "id": "c",
+        "text": "Rely on AWS Shield Standard for the distribution and the accelerator. Create Route 53 health checks with CloudWatch alarms that page the operations team when health degrades.",
+        "note": "This alerts the company's own team faster, but Shield Standard includes neither the SRT nor DDoS cost protection, so no AWS specialists engage and the scaling charges are not credited."
+      },
+      {
+        "id": "d",
+        "text": "Add the AWS WAF Anti-DDoS managed rule group to a web ACL on the distribution, and use AWS Firewall Manager to apply the web ACL across all accounts.",
+        "note": "The Anti-DDoS managed rule group mitigates HTTP request floods automatically, but it does not provide cost protection, and its detections do not trigger SRT proactive engagement."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "AWS Shield Advanced adds the Shield Response Team and DDoS cost protection for protected resources such as CloudFront, Global Accelerator, Route 53, ELB, and Elastic IPs. For the SRT to reach out first, turn on proactive engagement and associate Route 53 health checks with the protected resources, because the SRT uses health check status to decide when to engage. Shield Standard and AWS WAF provide mitigation but no SRT or cost protection."
+  },
+  {
+    "id": "secure-1.2-13",
+    "domain": "secure",
+    "services": [
+      "AWS Network Firewall",
+      "Amazon VPC",
+      "NAT gateway"
+    ],
+    "text": "A company runs workloads on Amazon EC2 instances in private subnets that reach the internet through NAT gateways. A new security policy states that outbound HTTPS traffic must be allowed only to an approved list of domain names, such as *.partner-example.com and the company's package repositories. All other outbound traffic must be blocked and logged. The IP addresses behind the approved domains change frequently. The company wants a managed solution.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add outbound rules to the instances' security groups that allow HTTPS only to the approved domain names, and remove the default rule that allows all outbound traffic.",
+        "note": "Security group rules accept CIDR blocks, prefix lists, and security groups, not domain names. They also cannot log blocked traffic."
+      },
+      {
+        "id": "b",
+        "text": "Associate an AWS WAF web ACL with the NAT gateways. Add a rule that allows requests only to the approved domain names.",
+        "note": "AWS WAF inspects inbound HTTP requests to resources such as ALBs and CloudFront. It cannot be associated with a NAT gateway or filter outbound traffic."
+      },
+      {
+        "id": "c",
+        "text": "Deploy AWS Network Firewall with a stateful domain list rule group that allows only the approved domains. Route the private subnets through its endpoints.",
+        "note": "Network Firewall is a managed stateful firewall that can filter outbound HTTPS by domain name using the TLS SNI, and it can log allowed and dropped traffic. Changing IP addresses do not matter."
+      },
+      {
+        "id": "d",
+        "text": "Add outbound rules to the private subnets' network ACLs that allow HTTPS only to the current IP address ranges of the approved domains.",
+        "note": "Network ACLs filter by IP address only. The approved domains' IP addresses change often, so the rules would need constant updates and would break."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "AWS Network Firewall provides managed, stateful egress filtering by domain name (using the SNI or Host header) for VPC traffic, with logging. Security groups and network ACLs work only with IP addresses. AWS WAF protects inbound web applications, not outbound VPC traffic."
+  },
+  {
+    "id": "secure-1.2-14",
+    "domain": "secure",
+    "services": [
+      "Elastic Load Balancing",
+      "Amazon VPC",
+      "AWS Network Firewall"
+    ],
+    "text": "A financial services company must inspect all inbound internet traffic to its VPC with virtual firewall appliances from a specific third-party vendor because of a regulatory audit commitment. The inspection layer must scale automatically, remain available if an Availability Zone fails, and be transparent to the applications, which must see the original client IP addresses.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Deploy AWS Network Firewall in each Availability Zone and use ingress routing on the internet gateway to send inbound traffic through the firewall endpoints.",
+        "note": "Network Firewall is a managed AWS firewall that would scale and stay available. However, it is not the third-party vendor's appliance that the company has committed to use."
+      },
+      {
+        "id": "b",
+        "text": "Deploy the vendor appliances in an Auto Scaling group across Availability Zones behind a Network Load Balancer. Point the application DNS records to the Network Load Balancer.",
+        "note": "An NLB delivers traffic to the appliances as its targets, so the appliances would have to act as proxies that forward traffic onward themselves. This is not transparent inline inspection and complicates preserving the original client addresses for the applications."
+      },
+      {
+        "id": "c",
+        "text": "Launch one vendor appliance on a large EC2 instance with source/destination checking turned off. Route inbound traffic through the instance by using ingress routing.",
+        "note": "This can inspect traffic inline, but a single instance does not scale automatically and is a single point of failure."
+      },
+      {
+        "id": "d",
+        "text": "Deploy the vendor appliances in an Auto Scaling group across Availability Zones behind a Gateway Load Balancer. Use ingress routing to send inbound traffic through Gateway Load Balancer endpoints.",
+        "note": "Gateway Load Balancer is built for third-party virtual appliances. It forwards traffic transparently (using GENEVE) to a scalable, multi-AZ appliance fleet and returns it to its original path with the source IP preserved."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Gateway Load Balancer is the service for inserting third-party virtual appliances transparently into a traffic path, with scaling and health checks across Availability Zones. AWS Network Firewall is the choice when an AWS-managed firewall is acceptable. An NLB load-balances application traffic and is not a bump-in-the-wire."
+  },
+  {
+    "id": "secure-1.2-15",
+    "domain": "secure",
+    "services": [
+      "Amazon GuardDuty",
+      "Amazon EventBridge",
+      "AWS Lambda",
+      "AWS Organizations"
+    ],
+    "text": "A company has 40 AWS accounts in AWS Organizations. The security team wants to detect Amazon EC2 instances that communicate with known command-and-control servers or that perform cryptocurrency mining. When such a finding occurs, the affected instance must be isolated automatically by replacing its security groups with a security group that has no rules. The team does not want to install agents on the instances.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Enable Amazon GuardDuty in all accounts by designating a delegated administrator account and turning on auto-enable for member accounts.",
+        "note": "GuardDuty analyzes VPC Flow Logs, DNS logs, and CloudTrail events without agents. It produces findings for command-and-control communication and cryptocurrency mining, and a delegated administrator covers all organization accounts."
+      },
+      {
+        "id": "b",
+        "text": "Enable Amazon Inspector in all accounts and configure it to scan EC2 instances continuously.",
+        "note": "Amazon Inspector finds software vulnerabilities and unintended network exposure. It does not detect active malicious communication such as command-and-control traffic."
+      },
+      {
+        "id": "c",
+        "text": "Create an Amazon EventBridge rule that matches the relevant GuardDuty findings and invokes an AWS Lambda function that replaces the instance's security groups with the isolation security group.",
+        "note": "GuardDuty publishes findings to EventBridge. A rule that invokes Lambda can isolate the instance automatically within seconds of the finding."
+      },
+      {
+        "id": "d",
+        "text": "Create an AWS Config rule with automatic remediation that removes inbound SSH rules from security groups that allow 0.0.0.0/0.",
+        "note": "This enforces a configuration best practice, but it does not detect malicious communication and does not isolate a compromised instance."
+      },
+      {
+        "id": "e",
+        "text": "Enable AWS CloudTrail Insights and create an Amazon CloudWatch alarm that sends notifications when unusual API activity is detected.",
+        "note": "CloudTrail Insights detects unusual rates of management API calls. It does not see instance network traffic, and a notification does not isolate the instance."
+      }
+    ],
+    "correct": [
+      "a",
+      "c"
+    ],
+    "explanation": "GuardDuty is the agentless threat detection service for compromised instances and credentials. Its findings flow to EventBridge, where a rule can start automated remediation such as a Lambda function that swaps security groups. Inspector covers vulnerabilities, and Config covers configuration compliance, not active threats."
+  },
+  {
+    "id": "secure-1.2-16",
+    "domain": "secure",
+    "services": [
+      "Amazon Inspector",
+      "Amazon ECR",
+      "AWS Lambda",
+      "Amazon EC2"
+    ],
+    "text": "A company runs workloads on Amazon EC2 instances, on container images stored in Amazon ECR, and on AWS Lambda functions. The security team must continuously identify software vulnerabilities (CVEs) in all three, including newly published CVEs that affect resources already deployed, and must receive findings prioritized by risk.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Activate Amazon Inspector for EC2, ECR, and Lambda. Ensure the instances are managed by Systems Manager or use agentless scanning.",
+        "note": "Amazon Inspector continuously scans EC2 instances, ECR images, and Lambda functions for CVEs, rescans when new CVEs are published, and scores findings by risk."
+      },
+      {
+        "id": "b",
+        "text": "Enable Amazon GuardDuty Runtime Monitoring for EC2 and Amazon ECS, and GuardDuty Malware Protection for EC2 to scan the instances' EBS volumes.",
+        "note": "GuardDuty detects active threats and malware on running workloads. It does not inventory the software packages in instances, ECR images, or Lambda functions and match them against CVEs."
+      },
+      {
+        "id": "c",
+        "text": "Enable Amazon ECR basic scanning on push for container images. Use AWS Systems Manager Patch Manager to patch the EC2 instances on a schedule.",
+        "note": "Basic scanning runs only when an image is pushed, so newly published CVEs in existing images are missed. Patch Manager applies patches but does not report risk-prioritized CVEs, and Lambda is not covered."
+      },
+      {
+        "id": "d",
+        "text": "Enable AWS Security Hub CSPM with the AWS Foundational Security Best Practices standard in every account and Region that the company uses.",
+        "note": "Security Hub CSPM checks resource configurations against best practices and aggregates findings from other services. It does not scan software for vulnerabilities itself."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Amazon Inspector is the managed vulnerability scanner for EC2, ECR images, and Lambda. It rescans continuously as new CVEs appear and assigns a risk score. GuardDuty detects threats, Security Hub CSPM aggregates findings and checks configuration, and ECR basic scanning runs only on push or on demand."
+  },
+  {
+    "id": "secure-1.2-17",
+    "domain": "secure",
+    "services": [
+      "Amazon Macie",
+      "Amazon S3",
+      "AWS Organizations"
+    ],
+    "text": "A company stores data in more than 600 Amazon S3 buckets across 25 AWS accounts in AWS Organizations. Amazon Macie is enabled for the organization with a delegated administrator and runs automated sensitive data discovery. Auditors require the company to find buckets that contain passport numbers, credit card numbers, and the company's internal customer account numbers, which use the format CUST- followed by 10 digits. Macie reports passport and credit card numbers but never reports the account numbers.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a Macie allow list with a regular expression that matches the customer account number format. Add the allow list to the automated discovery settings.",
+        "note": "An allow list defines text that Macie ignores, even when the text matches a data identifier. Adding the account number pattern would suppress detections instead of creating them."
+      },
+      {
+        "id": "b",
+        "text": "Create a Macie custom data identifier with a regular expression for the account number format. Add it to the automated discovery settings.",
+        "note": "Custom data identifiers detect organization-specific data types by regex, optional keywords, and proximity rules. Automated discovery does not use them by default, so the identifier must be added to its settings."
+      },
+      {
+        "id": "c",
+        "text": "Add more managed data identifiers to the automated discovery settings so that Macie detects additional categories of financial account numbers.",
+        "note": "Managed data identifiers detect standard data types, such as bank account numbers for specific countries. They cannot recognize a proprietary format that only this company uses."
+      },
+      {
+        "id": "d",
+        "text": "Configure S3 Event Notifications to invoke an AWS Lambda function that searches each new object for the account number pattern and records matches in DynamoDB.",
+        "note": "This requires custom code in every account, inspects only new objects, and does not report on existing data. It has far more operational overhead than configuring Macie."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Macie managed data identifiers cover standard sensitive data such as passport and credit card numbers. Company-specific formats need a custom data identifier, which you must add to the automated discovery settings. Allow lists do the opposite: they tell Macie which matches to ignore."
+  },
+  {
+    "id": "secure-1.2-18",
+    "domain": "secure",
+    "services": [
+      "AWS Security Hub",
+      "Amazon GuardDuty",
+      "Amazon Inspector",
+      "Amazon Macie"
+    ],
+    "text": "A company uses Amazon GuardDuty, Amazon Inspector, and Amazon Macie in 30 AWS accounts across four AWS Regions. The security team wants a single place to view and prioritize findings from all of these services across all accounts and Regions. The team also wants automated, continuous checks of the accounts against the CIS AWS Foundations Benchmark.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Deploy an AWS Config aggregator in a central account and deploy a conformance pack for the CIS AWS Foundations Benchmark to all accounts.",
+        "note": "This provides CIS compliance checks across accounts, but AWS Config does not ingest GuardDuty, Inspector, or Macie findings, so there is still no single view of findings."
+      },
+      {
+        "id": "b",
+        "text": "Enable Amazon Security Lake to collect security data from all accounts and Regions into a central Amazon S3 data lake.",
+        "note": "Security Lake centralizes logs and findings in OCSF format for analysis with other tools. It does not provide a findings dashboard or run CIS benchmark checks."
+      },
+      {
+        "id": "c",
+        "text": "Enable AWS Security Hub CSPM with a delegated administrator and cross-Region aggregation. Enable the CIS AWS Foundations Benchmark standard in all accounts.",
+        "note": "Security Hub CSPM aggregates and prioritizes findings from GuardDuty, Inspector, Macie, and others across accounts and Regions. It also runs automated security standard checks such as the CIS benchmark."
+      },
+      {
+        "id": "d",
+        "text": "Enable Amazon Detective in all accounts with a delegated administrator, and use its behavior graphs to review findings from the other services.",
+        "note": "Detective helps investigate the root cause of findings. It does not run compliance checks against the CIS benchmark or act as the central findings dashboard."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "AWS Security Hub CSPM (formerly named AWS Security Hub) aggregates security findings from AWS services and partners and runs security standards such as CIS and AWS Foundational Security Best Practices. With a delegated administrator and cross-Region aggregation, it gives one view across the organization. Config handles compliance rules only, and Detective handles investigation."
+  },
+  {
+    "id": "secure-1.2-19",
+    "domain": "secure",
+    "services": [
+      "Amazon Detective",
+      "Amazon GuardDuty",
+      "AWS CloudTrail"
+    ],
+    "text": "Amazon GuardDuty generated a finding that an IAM role made unusual API calls from an IP address that the company has never used. Security analysts must determine the root cause. They need to see which other resources and IP addresses the role interacted with and how its behavior compares with the previous several weeks. The company does not want to build or maintain a log analytics pipeline.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an AWS CloudTrail trail that delivers logs to Amazon S3. Use Amazon Athena to query the role's API activity for the past several weeks.",
+        "note": "Athena can query CloudTrail logs, but analysts must create tables, write queries, and correlate results themselves. This is the log analytics work the company wants to avoid."
+      },
+      {
+        "id": "b",
+        "text": "Enable AWS Security Hub and use its findings view to review the GuardDuty finding together with findings from other services.",
+        "note": "Security Hub aggregates and prioritizes findings. It does not provide historical behavior graphs or baselines of an entity's activity for investigation."
+      },
+      {
+        "id": "c",
+        "text": "Export GuardDuty findings and VPC Flow Logs to Amazon OpenSearch Service and build dashboards that show the role's activity.",
+        "note": "This could visualize the activity, but the company would have to build and run the ingestion pipeline and the OpenSearch domain."
+      },
+      {
+        "id": "d",
+        "text": "Enable Amazon Detective and open the GuardDuty finding in Detective to review the role's activity and related entities.",
+        "note": "Detective automatically builds behavior graphs from CloudTrail, VPC Flow Logs, and GuardDuty findings. Analysts can pivot from a finding to related entities and compare activity with the historical baseline, with no pipeline to manage."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Amazon Detective is the managed investigation service: it links GuardDuty findings to behavior graphs built from CloudTrail and VPC Flow Logs so analysts can find root cause quickly. GuardDuty detects, Security Hub aggregates, and Detective investigates."
+  },
+  {
+    "id": "secure-1.2-20",
+    "domain": "secure",
+    "services": [
+      "AWS Secrets Manager",
+      "Amazon RDS",
+      "Amazon ECS",
+      "AWS Systems Manager"
+    ],
+    "text": "A company runs an application on Amazon ECS. The application connects to an Amazon RDS for PostgreSQL DB instance as the master user. The password is stored in a configuration file in the container image. A new compliance rule requires the password to be rotated automatically every 30 days. Tasks run for weeks at a time and must keep connecting successfully after each rotation. The company does not want to deploy or maintain any rotation functions.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Store the password in AWS Secrets Manager with 30-day rotation that uses the AWS-provided single-user rotation function for RDS. Retrieve the secret at runtime.",
+        "note": "This works, but the rotation template deploys an AWS Lambda function into the account that the company must operate, monitor, and give network access to the database. The company does not want to maintain rotation functions."
+      },
+      {
+        "id": "b",
+        "text": "Turn on RDS management of the master user password in Secrets Manager with a 30-day rotation schedule. Inject the secret into the containers as an environment variable.",
+        "note": "RDS-managed rotation needs no rotation function. However, ECS injects secrets as environment variables only when a container starts, so long-running tasks keep the old password after a rotation until they are replaced."
+      },
+      {
+        "id": "c",
+        "text": "Turn on RDS management of the master user password in Secrets Manager with a 30-day rotation schedule. Have the application read the secret when it connects.",
+        "note": "RDS generates, stores, and rotates the master user password in Secrets Manager without a Lambda function, and the schedule can be changed from the 7-day default. Reading the secret at connection time always returns the current password."
+      },
+      {
+        "id": "d",
+        "text": "Store the password as a Parameter Store SecureString parameter. Use EventBridge Scheduler to invoke a Lambda function that changes the password and updates the parameter.",
+        "note": "Parameter Store has no built-in rotation. The company would have to write and maintain the rotation function, which it wants to avoid."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "RDS integration with Secrets Manager manages and rotates the master user password with no rotation function to deploy, and the rotation schedule is adjustable. Applications must fetch the secret at runtime: an ECS environment variable is set once at container start and does not change when the secret rotates."
+  },
+  {
+    "id": "secure-1.2-21",
+    "domain": "secure",
+    "services": [
+      "AWS Systems Manager",
+      "AWS Secrets Manager",
+      "AWS KMS"
+    ],
+    "text": "A company's applications use about 800 configuration values, such as feature flags and service endpoint URLs, organized by environment and application. About 20 of the values are API keys for a third-party service that does not support programmatic key rotation. The API keys must be encrypted at rest, and each value must keep a version history. Each value is smaller than 1 KB.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Store all values as secrets in AWS Secrets Manager, using path-style names for the hierarchy.",
+        "note": "Secrets Manager encrypts and versions secrets, but each secret has a monthly charge. Its main extra feature, managed rotation, is not needed here, so storing 800 values this way costs far more than necessary."
+      },
+      {
+        "id": "b",
+        "text": "Store the values as Parameter Store standard parameters in a path hierarchy, using SecureString parameters for the API keys.",
+        "note": "Standard parameters have no storage charge, support hierarchies and version history, and SecureString parameters encrypt the API keys with AWS KMS. This meets every requirement at the lowest cost."
+      },
+      {
+        "id": "c",
+        "text": "Store the values as AWS Systems Manager Parameter Store advanced parameters in a path hierarchy. Use SecureString parameters for the API keys.",
+        "note": "Advanced parameters support larger values and parameter policies but are charged per parameter per month. The values are under 4 KB and no policies are needed, so standard parameters are cheaper."
+      },
+      {
+        "id": "d",
+        "text": "Store the values in an Amazon DynamoDB table encrypted with an AWS KMS key. Add a version attribute and write a new item for each change.",
+        "note": "This could work, but the company must build versioning and access logic itself. A purpose-built configuration store meets the requirements with less effort and no table costs."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Parameter Store standard parameters are free, hierarchical, and versioned, and SecureString adds KMS encryption for sensitive values. Secrets Manager costs more per secret and is worth it when you need managed rotation or cross-Region replication. Advanced parameters are needed only for values over 4 KB, more than 10,000 parameters, or parameter policies."
+  },
+  {
+    "id": "secure-1.2-22",
+    "domain": "secure",
+    "services": [
+      "AWS Secrets Manager",
+      "Amazon Aurora"
+    ],
+    "text": "A company runs an application in us-east-1 with a disaster recovery (DR) environment in us-west-2. The database is an Amazon Aurora global database. The database credentials are stored in AWS Secrets Manager in us-east-1 and are rotated automatically every 30 days. During a DR event, the application in us-west-2 must retrieve the current credentials even if us-east-1 is completely unavailable.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure the application in us-west-2 to retrieve the secret from the Secrets Manager endpoint in us-east-1.",
+        "note": "This works only while us-east-1 is reachable. If us-east-1 is unavailable, the DR application cannot get the credentials."
+      },
+      {
+        "id": "b",
+        "text": "Use an Amazon EventBridge rule on the rotation event to invoke an AWS Lambda function that copies the secret value into a separate secret in us-west-2.",
+        "note": "This keeps a copy in us-west-2, but the company must write and maintain the copy function and monitor it for failures."
+      },
+      {
+        "id": "c",
+        "text": "Replicate the secret to us-west-2 by using Secrets Manager multi-Region secret replication. Configure the DR application to read the replica in us-west-2.",
+        "note": "Secrets Manager natively replicates a secret to other Regions and keeps replicas in sync when the primary is rotated. The replica can be read, or promoted, if the primary Region fails."
+      },
+      {
+        "id": "d",
+        "text": "Store a copy of the credentials as an AWS Systems Manager Parameter Store SecureString parameter in us-west-2 and update it after each rotation.",
+        "note": "Parameter Store has no native cross-Region replication, so someone must update the copy after every rotation. This is manual work and the copy can drift."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Secrets Manager replicate-secret-to-Regions keeps replica secrets in sync with the primary, including rotated values, and replicas can be promoted to standalone secrets during DR. This is a built-in feature that Parameter Store lacks, and it avoids any dependency on the failed Region."
+  },
+  {
+    "id": "secure-1.2-23",
+    "domain": "secure",
+    "services": [
+      "Amazon API Gateway",
+      "Amazon Cognito"
+    ],
+    "text": "A company is building a mobile application for consumers. Users must be able to sign up and sign in, and the backend is a REST API in Amazon API Gateway. Only signed-in users may call the API. The company does not want to write or maintain any authentication or token validation code, and it does not want to run its own user directory.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Amazon Cognito user pool for sign-up and sign-in. Configure an AWS Lambda authorizer that verifies the user pool JWTs on each API request.",
+        "note": "The user pool handles the directory, but the Lambda authorizer is token validation code that the company must write, secure, and maintain."
+      },
+      {
+        "id": "b",
+        "text": "Create a Cognito user pool and an identity pool. Have the app exchange user pool tokens for temporary AWS credentials and sign API requests with SigV4.",
+        "note": "With IAM authorization on the methods, this works, but it adds an identity pool, IAM roles, and request signing in every client. That is more to build and operate than a user pool authorizer."
+      },
+      {
+        "id": "c",
+        "text": "Create an Amazon Cognito user pool for sign-up and sign-in. Issue each user an API Gateway API key at sign-up, and require the key on all methods.",
+        "note": "API keys identify clients for usage plans and throttling. They are not an authentication mechanism, and a copied key works without a signed-in user."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon Cognito user pool for sign-up and sign-in. Configure a Cognito user pool authorizer on the REST API methods.",
+        "note": "Cognito user pools provide a managed user directory with sign-up and sign-in. The Cognito authorizer validates the user pool tokens in API Gateway with no custom code."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "For consumer sign-up and sign-in with a REST API, pair an Amazon Cognito user pool with a Cognito user pool authorizer, which validates tokens without code. Identity pools are for handing out AWS credentials, which adds IAM roles and SigV4 signing. Lambda authorizers are for custom token schemes, and API keys are for usage plans, not authentication."
+  },
+  {
+    "id": "secure-1.2-24",
+    "domain": "secure",
+    "services": [
+      "Amazon API Gateway",
+      "AWS Lambda",
+      "Amazon Cognito"
+    ],
+    "text": "A company is exposing a REST API in Amazon API Gateway to its business partners. Partners authenticate with the company's on-premises legacy identity system, which issues opaque session tokens that are not JWTs. Partners send the token in a custom request header. Before a request is allowed, the token must be validated with the legacy system, and the partner's permitted operations must be looked up in a database. The company cannot migrate the partners to a new identity system.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure a Lambda authorizer that validates the header token with the legacy system, looks up the partner's permissions, and returns an IAM policy.",
+        "note": "A Lambda authorizer can run any custom logic, such as calling the legacy system and a permissions database, and returns a policy that API Gateway enforces. Authorizer result caching can reduce calls to the legacy system."
+      },
+      {
+        "id": "b",
+        "text": "Configure an Amazon Cognito user pool authorizer on the API methods and require partners to send their legacy token in the Authorization header.",
+        "note": "A Cognito authorizer validates only tokens issued by the configured Cognito user pool. It cannot validate opaque tokens from the legacy system."
+      },
+      {
+        "id": "c",
+        "text": "Enable IAM authorization on the API methods and require partners to sign their requests with Signature Version 4.",
+        "note": "IAM authorization requires callers to have AWS credentials. The partners authenticate with the legacy system, not with IAM, so they cannot sign requests."
+      },
+      {
+        "id": "d",
+        "text": "Attach an API Gateway resource policy that allows requests only from each partner's registered IP address ranges, and deny all other source IP addresses.",
+        "note": "A resource policy can restrict source IP addresses, but it cannot validate tokens or apply per-partner permissions."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Lambda authorizers are for custom authentication and authorization logic, such as validating tokens from a legacy or third-party system and building per-caller policies. Cognito authorizers validate only Cognito tokens, and IAM authorization requires AWS credentials."
+  },
+  {
+    "id": "secure-1.2-25",
+    "domain": "secure",
+    "services": [
+      "Amazon API Gateway",
+      "AWS IAM",
+      "Amazon ECS"
+    ],
+    "text": "A company has a REST API in Amazon API Gateway in Account A. A microservice that runs as Amazon ECS tasks in Account B must call the API. The ECS tasks already use an IAM task role. Only that task role may invoke the API. The security team does not want to create, distribute, or rotate any shared secrets for this integration.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an API key in a usage plan for the API. Store the API key in AWS Secrets Manager in Account B and have the tasks send it with each request.",
+        "note": "API keys are shared secrets that must be distributed and rotated, and API Gateway does not treat them as authentication. This does not meet the requirement."
+      },
+      {
+        "id": "b",
+        "text": "Enable IAM authorization on the API. Add a resource policy that allows execute-api:Invoke only for the Account B task role, and sign requests with SigV4.",
+        "note": "With IAM authorization, callers sign requests with their temporary role credentials. The resource policy grants cross-account access to that one role, so no shared secret exists."
+      },
+      {
+        "id": "c",
+        "text": "Create an Amazon Cognito user pool app client with the client credentials grant. Store the client secret in Account B and configure a Cognito authorizer on the API.",
+        "note": "This authenticates machine-to-machine calls, but it relies on a client secret that must be stored, distributed, and rotated."
+      },
+      {
+        "id": "d",
+        "text": "Configure a Lambda authorizer that allows requests whose source IP address matches the Elastic IP address of the NAT gateway in Account B.",
+        "note": "Any workload behind that NAT gateway could call the API, so this does not limit access to the task role. It also breaks if the network path changes."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "When the caller is an AWS workload with an IAM role, IAM authorization (SigV4) plus an API resource policy gives cross-account access with temporary credentials and no secrets to manage. Cognito client credentials and API keys both introduce secrets."
+  },
+  {
+    "id": "secure-1.2-26",
+    "domain": "secure",
+    "services": [
+      "Amazon API Gateway",
+      "AWS PrivateLink",
+      "Amazon VPC"
+    ],
+    "text": "A company has an internal REST API in Amazon API Gateway that is used only by applications on Amazon EC2 instances in one VPC. The VPC has no internet gateway or NAT gateway. A security review found that the API currently has a Regional endpoint that is reachable from the internet. The API must be reachable only from the VPC.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Change the API endpoint type to private. Attach a resource policy that allows execute-api:Invoke only when the request comes through the company's VPC endpoint.",
+        "note": "A private API is not reachable from the internet, and the resource policy limits invocation to requests that arrive through the specified VPC endpoint."
+      },
+      {
+        "id": "b",
+        "text": "Create an interface VPC endpoint for the execute-api service in the VPC subnets, with a security group that allows HTTPS from the application instances.",
+        "note": "Private APIs are reached through an interface VPC endpoint for execute-api. This gives the instances a private path to the API without internet access."
+      },
+      {
+        "id": "c",
+        "text": "Create a gateway VPC endpoint for Amazon API Gateway and add it to the route tables of the application subnets.",
+        "note": "Gateway endpoints exist only for Amazon S3 and Amazon DynamoDB. API Gateway is reached privately through an interface endpoint."
+      },
+      {
+        "id": "d",
+        "text": "Keep the Regional endpoint and associate an AWS WAF web ACL that allows only requests from the VPC CIDR block.",
+        "note": "The Regional endpoint would still be public, and without an internet path the instances cannot reach it at all. Private VPC addresses would also never appear as the source of requests to a public endpoint."
+      },
+      {
+        "id": "e",
+        "text": "Keep the Regional endpoint and add a NAT gateway. Attach a resource policy that allows only the NAT gateway's Elastic IP address.",
+        "note": "This restricts callers by IP address, but the API stays internet-facing and the VPC gains an internet path, which the design avoids."
+      }
+    ],
+    "correct": [
+      "a",
+      "b"
+    ],
+    "explanation": "A private REST API plus an interface VPC endpoint for execute-api is how to make API Gateway reachable only from inside a VPC. The resource policy, usually with aws:SourceVpce, controls which endpoints may invoke it. There is no gateway endpoint for API Gateway."
+  },
+  {
+    "id": "secure-1.2-27",
+    "domain": "secure",
+    "services": [
+      "Amazon CloudFront",
+      "Amazon S3",
+      "AWS KMS"
+    ],
+    "text": "A company serves a static website from an Amazon S3 bucket through an Amazon CloudFront distribution. The objects are encrypted with SSE-KMS by using a customer managed key. Users have discovered that they can bypass CloudFront and download objects directly from S3. The company must ensure that the objects can be retrieved only through this CloudFront distribution.\n\nWhich solution will meet these requirements in the MOST secure way?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure a CloudFront origin access identity (OAI). Update the bucket policy to allow s3:GetObject only for the OAI, and block public access to the bucket.",
+        "note": "An OAI is the legacy method. It does not support objects encrypted with SSE-KMS, so CloudFront could not retrieve the encrypted objects."
+      },
+      {
+        "id": "b",
+        "text": "Use the S3 static website endpoint as a custom origin. Have CloudFront add a secret Referer header and allow only requests with that header in the bucket policy.",
+        "note": "Website endpoints require public read access and do not serve SSE-KMS encrypted objects. A Referer header is also a weak control because it can be forged."
+      },
+      {
+        "id": "c",
+        "text": "Configure CloudFront origin access control (OAC). Allow only this distribution's ARN in the bucket and KMS key policies, and turn on S3 Block Public Access.",
+        "note": "OAC signs origin requests with SigV4 and supports SSE-KMS. Conditions on AWS:SourceArn limit access to this one distribution, and Block Public Access stops direct downloads."
+      },
+      {
+        "id": "d",
+        "text": "Update the bucket policy to allow s3:GetObject only from the published CloudFront IP address ranges by using the aws:SourceIp condition key.",
+        "note": "CloudFront IP ranges are shared by all CloudFront distributions, including other customers' distributions, and the list changes over time. This does not limit access to the company's distribution."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Origin access control is the current, recommended way to restrict an S3 origin to a specific CloudFront distribution. Unlike the legacy OAI, it supports SSE-KMS (the key policy must also allow CloudFront). Scope the bucket and key policies with AWS:SourceArn so that only your distribution can read."
+  },
+  {
+    "id": "secure-1.2-28",
+    "domain": "secure",
+    "services": [
+      "Amazon CloudFront",
+      "Elastic Load Balancing",
+      "Amazon VPC",
+      "AWS WAF"
+    ],
+    "text": "A company uses an Amazon CloudFront distribution in front of an internet-facing Application Load Balancer (ALB). AWS WAF rules are attached to the CloudFront distribution. Attackers have found the ALB's DNS name and are sending requests directly to the ALB to bypass the WAF rules. The company must ensure that the ALB accepts traffic only from CloudFront.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure CloudFront origin access control (OAC) for the ALB origin, and update the ALB listener to require signed requests from CloudFront.",
+        "note": "Origin access control supports origins such as Amazon S3 and Lambda function URLs. It does not apply to ALB origins."
+      },
+      {
+        "id": "b",
+        "text": "Subscribe an AWS Lambda function to AWS IP address range change notifications and have it update the ALB subnets' network ACLs with the CloudFront IP ranges.",
+        "note": "This needs custom code, and the CloudFront ranges far exceed the network ACL rule quota. It has high operational overhead."
+      },
+      {
+        "id": "c",
+        "text": "Associate an AWS WAF web ACL with the ALB that allows only an IP set containing the CloudFront IP ranges. Update the IP set when AWS publishes changes.",
+        "note": "This could block direct traffic, but the IP set must be kept current by hand as CloudFront ranges change, which adds ongoing effort and risk."
+      },
+      {
+        "id": "d",
+        "text": "Replace the ALB security group's inbound rules with one rule that allows HTTPS only from the AWS managed prefix list for CloudFront origin-facing servers.",
+        "note": "AWS maintains the CloudFront origin-facing managed prefix list, so the security group stays current automatically. Direct requests from other sources are dropped."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "The AWS managed prefix list com.amazonaws.global.cloudfront.origin-facing lets a security group allow only CloudFront, with no maintenance. Origin access control is for S3 and similar origins, not ALBs. A custom header checked by the ALB can be added on top to tie access to a single distribution. For new designs, CloudFront VPC origins can also place the ALB in private subnets that are reachable only through CloudFront."
+  },
+  {
+    "id": "secure-1.2-29",
+    "domain": "secure",
+    "services": [
+      "AWS Systems Manager",
+      "Amazon EC2",
+      "Amazon S3",
+      "Amazon CloudWatch"
+    ],
+    "text": "Administrators currently connect to Linux Amazon EC2 instances in private subnets by using SSH through a bastion host in a public subnet. The security team wants to remove the bastion host, remove all inbound SSH rules from the instances' security groups, control access through IAM policies, and keep a log of every command that administrators run in each session.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Use Systems Manager Session Manager with an instance profile for the SSM Agent. Log session activity to Amazon S3 and CloudWatch Logs.",
+        "note": "Session Manager opens shell sessions through the SSM Agent's outbound connection, so no inbound ports or bastion are needed. Access is controlled by IAM, and session activity can be logged to S3 and CloudWatch Logs."
+      },
+      {
+        "id": "b",
+        "text": "Use EC2 Instance Connect Endpoint to connect to the instances. Control access with IAM policies on the endpoint.",
+        "note": "EC2 Instance Connect Endpoint removes the bastion host, but it still opens SSH connections to the instances, so their security groups must allow inbound port 22 from the endpoint. It also does not log commands."
+      },
+      {
+        "id": "c",
+        "text": "Deploy AWS Client VPN to the VPC. Have administrators connect to the VPN and then use SSH to reach the instances directly.",
+        "note": "Client VPN removes the public bastion, but SSH must still be allowed inbound on the instances, and commands run in the session are not logged."
+      },
+      {
+        "id": "d",
+        "text": "Move the bastion host to a private subnet and connect to it over an AWS Site-to-Site VPN. Enable shell history logging on the bastion host.",
+        "note": "This keeps a bastion host and inbound SSH rules, which the security team wants to remove, and logs on the bastion can be altered by its users."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Session Manager replaces bastion hosts: the agent connects outbound to Systems Manager, so no inbound ports are opened. IAM governs who can start sessions, and full session logs can go to S3 and CloudWatch Logs. EC2 Instance Connect still uses SSH on port 22."
+  },
+  {
+    "id": "secure-1.2-30",
+    "domain": "secure",
+    "services": [
+      "AWS Systems Manager",
+      "Amazon VPC",
+      "AWS PrivateLink",
+      "Amazon EC2"
+    ],
+    "text": "A company wants to manage Amazon EC2 instances by using AWS Systems Manager Session Manager. The instances run in private subnets of a VPC that has no internet gateway and no NAT gateway, and security policy forbids adding either. The instances run a current version of the SSM Agent but do not appear as managed nodes in Systems Manager.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Allow inbound TCP port 22 from the VPC CIDR block in the instances' security groups.",
+        "note": "Session Manager does not use inbound SSH. The SSM Agent connects outbound, so opening port 22 does not register the instances."
+      },
+      {
+        "id": "b",
+        "text": "Create a gateway VPC endpoint for Systems Manager and add it to the route tables of the private subnets.",
+        "note": "Gateway endpoints exist only for Amazon S3 and Amazon DynamoDB. Systems Manager is reached privately through interface endpoints."
+      },
+      {
+        "id": "c",
+        "text": "Attach an IAM instance profile that includes the AmazonSSMManagedInstanceCore managed policy to the instances.",
+        "note": "The SSM Agent needs IAM permissions from an instance profile (or Default Host Management Configuration) to register with Systems Manager and open sessions."
+      },
+      {
+        "id": "d",
+        "text": "Create interface VPC endpoints for the ssm, ssmmessages, and ec2messages services, with private DNS enabled and HTTPS allowed from the instances.",
+        "note": "Without internet access, the SSM Agent reaches Systems Manager through these interface endpoints. The ssmmessages endpoint carries the Session Manager data channel, and current agents use it in place of ec2messages when it is available."
+      },
+      {
+        "id": "e",
+        "text": "Assign public IP addresses to the instances and allow outbound HTTPS to 0.0.0.0/0 in their security groups.",
+        "note": "Public IP addresses do nothing without an internet gateway, and adding one is forbidden by the policy."
+      }
+    ],
+    "correct": [
+      "c",
+      "d"
+    ],
+    "explanation": "Session Manager needs two things: IAM permissions for the instance (for example, AmazonSSMManagedInstanceCore) and a network path to the Systems Manager endpoints. In a VPC with no internet path, that means interface endpoints for ssm, ssmmessages, and ec2messages. No inbound ports are ever required."
+  },
+  {
+    "id": "secure-1.2-31",
+    "domain": "secure",
+    "services": [
+      "AWS Network Firewall",
+      "AWS Transit Gateway",
+      "Amazon VPC"
+    ],
+    "text": "A company has 20 VPCs in one AWS Region that are connected through AWS Transit Gateway. A new security policy requires that all traffic between VPCs and all traffic from the VPCs to the internet be inspected by a stateful firewall. A central network team must manage a single set of firewall rules.\n\nWhich solution will meet these requirements in the MOST operationally efficient way?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Deploy AWS Network Firewall in each of the 20 VPCs, with a separate firewall policy that each application team manages, and route each VPC's traffic through its local firewall endpoints.",
+        "note": "Per-VPC firewalls can inspect traffic, but 20 separately managed policies conflict with the requirement for one centrally managed rule set and multiply the cost and effort."
+      },
+      {
+        "id": "b",
+        "text": "Attach an inspection VPC that runs AWS Network Firewall to the transit gateway with appliance mode on. Route inter-VPC and internet traffic through it.",
+        "note": "A centralized inspection VPC lets one firewall policy inspect all east-west and egress traffic. Appliance mode keeps both directions of a flow in the same Availability Zone so stateful inspection works."
+      },
+      {
+        "id": "c",
+        "text": "Create an inspection VPC with AWS Network Firewall. Peer each of the 20 VPCs with the inspection VPC and route traffic between VPCs through the firewall endpoints.",
+        "note": "VPC peering is not transitive and does not support edge-to-edge routing through a peered VPC, so traffic cannot pass through the inspection VPC to another VPC or to the internet."
+      },
+      {
+        "id": "d",
+        "text": "Create an AWS WAF web ACL with the required rules and associate it with the transit gateway so that it inspects all traffic that crosses the transit gateway.",
+        "note": "AWS WAF inspects HTTP requests to resources such as ALBs, CloudFront, and API Gateway. It cannot be associated with a transit gateway or inspect general network traffic."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "The standard pattern for central inspection is an inspection VPC with AWS Network Firewall (or a Gateway Load Balancer fleet) attached to a transit gateway, with route tables steering traffic through it. Enable appliance mode on that attachment so that stateful inspection sees symmetric flows. Peering cannot do this because it is not transitive."
+  },
+  {
+    "id": "secure-1.2-32",
+    "domain": "secure",
+    "services": [
+      "AWS Shield",
+      "Amazon CloudFront",
+      "Amazon Route 53",
+      "AWS WAF"
+    ],
+    "text": "A small company hosts a marketing website on Amazon S3 behind an Amazon CloudFront distribution and uses Amazon Route 53 for DNS. The company is concerned about network and transport layer DDoS attacks, such as SYN floods and UDP reflection attacks, against the website and its DNS. The company has a very limited budget.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Subscribe to AWS Shield Advanced and add the CloudFront distribution and the Route 53 hosted zone as protected resources.",
+        "note": "Shield Advanced adds a response team, cost protection, and advanced detection, which the company does not need for common layer 3 and layer 4 attacks. Its monthly subscription fee makes it the most expensive option."
+      },
+      {
+        "id": "b",
+        "text": "Subscribe to AWS Shield Advanced but protect only the Route 53 hosted zone, so that the company pays for the fewest protected resources.",
+        "note": "The Shield Advanced subscription is a flat monthly fee for the organization, whatever the number of protected resources. Protecting fewer resources does not make it cheap, and the attacks listed are already mitigated by Shield Standard."
+      },
+      {
+        "id": "c",
+        "text": "Rely on AWS Shield Standard, which is applied automatically to CloudFront and Route 53 at no additional charge.",
+        "note": "Shield Standard is turned on for all AWS customers and protects services such as CloudFront and Route 53 against the most common network and transport layer DDoS attacks, at no extra cost."
+      },
+      {
+        "id": "d",
+        "text": "Create an AWS WAF web ACL with rate-based rules and associate it with the CloudFront distribution to block floods of requests.",
+        "note": "AWS WAF filters application layer (HTTP) requests and is charged per web ACL, rule, and request. It does not address network layer attacks such as SYN floods, which Shield Standard already mitigates."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "AWS Shield Standard is free and automatic, and it defends against common layer 3 and layer 4 DDoS attacks, with the strongest protection for edge services such as CloudFront and Route 53. Shield Advanced has a flat organization-level subscription fee. Pay for it only when you need the Shield Response Team, cost protection, or advanced detection and visibility."
+  },
+  {
+    "id": "secure-1.2-33",
+    "domain": "secure",
+    "services": [
+      "Amazon VPC",
+      "Elastic Load Balancing",
+      "NAT gateway",
+      "Amazon EC2"
+    ],
+    "text": "A company is deploying a web application in a new VPC across two Availability Zones. Internet users will reach the application through an Application Load Balancer (ALB). The application's Amazon EC2 instances must not have public IP addresses and must accept traffic only from the ALB. The instances must be able to download software updates from the internet, and this outbound access must survive the failure of one Availability Zone.\n\nWhich combination of steps will meet these requirements? (Choose THREE.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an internet-facing ALB in private subnets in both Availability Zones.",
+        "note": "An internet-facing ALB must be in public subnets whose route tables point to an internet gateway. In private subnets it cannot receive traffic from the internet."
+      },
+      {
+        "id": "b",
+        "text": "Create an internet-facing ALB in public subnets in both Availability Zones.",
+        "note": "Internet-facing load balancers need public subnets with a route to an internet gateway. Using both Availability Zones keeps the entry point highly available."
+      },
+      {
+        "id": "c",
+        "text": "Launch the EC2 instances in private subnets in both Availability Zones, with a security group that allows the application port only from the ALB's security group.",
+        "note": "Private subnets keep the instances off the internet, and referencing the ALB security group allows traffic only from the load balancer."
+      },
+      {
+        "id": "d",
+        "text": "Launch the EC2 instances in public subnets in both Availability Zones with auto-assigned public IP addresses, and allow the application port only from the ALB's security group.",
+        "note": "The security group would limit inbound traffic, but the instances would have public IP addresses, which the requirements forbid."
+      },
+      {
+        "id": "e",
+        "text": "Create a NAT gateway in a public subnet in each Availability Zone, and route 0.0.0.0/0 from each private subnet to the NAT gateway in the same Availability Zone.",
+        "note": "NAT gateways in public subnets give private instances outbound-only internet access. One per Availability Zone keeps outbound access working if one zone fails."
+      },
+      {
+        "id": "f",
+        "text": "Create a NAT gateway in each private subnet, and route 0.0.0.0/0 from each private subnet to the NAT gateway in that subnet.",
+        "note": "A public NAT gateway must be in a public subnet with a route to the internet gateway. A NAT gateway in a private subnet, routed to itself, has no path to the internet."
+      }
+    ],
+    "correct": [
+      "b",
+      "c",
+      "e"
+    ],
+    "explanation": "The classic secure web tier is an internet-facing ALB in public subnets, instances in private subnets that allow traffic only from the ALB security group, and one NAT gateway per Availability Zone in the public subnets for outbound access. Watch for distractors that put the ALB or the NAT gateway in the wrong subnet type."
+  },
+  {
+    "id": "secure-1.2-34",
+    "domain": "secure",
+    "services": [
+      "Amazon API Gateway",
+      "Amazon Cognito",
+      "AWS Lambda"
+    ],
+    "text": "A company is building a new API by using an Amazon API Gateway HTTP API. The company's users already sign in through a third-party OpenID Connect (OIDC) identity provider, and the client applications already receive JWT access tokens from that provider. The API must accept only requests that include a valid, unexpired token that was issued by the provider for this API's audience. The company does not want to write custom authorization code.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure an AWS Lambda authorizer that downloads the provider's signing keys, validates each token's signature, issuer, audience, and expiration, and returns an authorization decision.",
+        "note": "A Lambda authorizer can validate the tokens, but it is custom code that the company must write, secure, and maintain, which the company wants to avoid."
+      },
+      {
+        "id": "b",
+        "text": "Create an Amazon Cognito user pool federated with the OIDC provider. Change the client applications to obtain tokens from the user pool, and configure a JWT authorizer for the user pool.",
+        "note": "This would work, but it adds a new user pool and changes the sign-in flow of every client, which is unnecessary when the existing provider's JWTs can be validated directly."
+      },
+      {
+        "id": "c",
+        "text": "Enable IAM authorization on the API routes and require the client applications to sign requests with Signature Version 4.",
+        "note": "IAM authorization requires AWS credentials. The clients hold OIDC tokens, not IAM credentials, so they cannot sign requests without additional infrastructure."
+      },
+      {
+        "id": "d",
+        "text": "Configure a JWT authorizer on the HTTP API routes with the provider's issuer URL and the API's audience.",
+        "note": "HTTP API JWT authorizers natively validate tokens from any OIDC-compliant issuer, including the signature, issuer, audience, and expiration, with no code."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "HTTP APIs include a built-in JWT authorizer that validates tokens from any OIDC or OAuth 2.0 issuer, such as Amazon Cognito, Okta, or Auth0. Reach for a Lambda authorizer only when the token format or authorization logic is custom, such as opaque tokens or database lookups."
+  },
+  {
+    "id": "secure-1.2-35",
+    "domain": "secure",
+    "services": [
+      "Amazon VPC",
+      "Amazon EC2"
+    ],
+    "text": "A developer launched an Amazon EC2 instance in a subnet whose route table has a 0.0.0.0/0 route to the VPC's internet gateway. The subnet's setting to auto-assign public IPv4 addresses is turned off, so the instance has only a private IP address. The instance's security group allows all outbound traffic, and the subnet uses the default network ACL. The instance cannot reach the internet. It must be able to initiate connections to the internet and must keep a stable public address that partners can add to their allow lists.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Allocate an Elastic IP address and associate it with the instance.",
+        "note": "An instance in a public subnet needs a public IPv4 address for the internet gateway to translate its traffic. An Elastic IP address provides one that stays the same across stops and starts."
+      },
+      {
+        "id": "b",
+        "text": "Create a NAT gateway in the same subnet and change the subnet's 0.0.0.0/0 route to point to the NAT gateway.",
+        "note": "A public NAT gateway depends on its subnet's route to the internet gateway. Pointing that same subnet's default route to the NAT gateway removes the NAT gateway's own path to the internet."
+      },
+      {
+        "id": "c",
+        "text": "Add an inbound rule to the security group that allows TCP ports 1024-65535 from 0.0.0.0/0 for return traffic.",
+        "note": "Security groups are stateful and already allow return traffic for outbound connections. The problem is the missing public IP address, not the security group."
+      },
+      {
+        "id": "d",
+        "text": "Attach a second internet gateway to the VPC and add a route to it from the subnet's route table.",
+        "note": "A VPC can have only one internet gateway attached. The existing gateway is fine; the instance lacks a public IP address."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "A subnet is public because its route table points to an internet gateway, but each instance still needs a public IPv4 address or Elastic IP address to use it. When an instance needs a fixed public address, use an Elastic IP address, because auto-assigned public IPs change when the instance stops and starts."
+  },
+  {
+    "id": "secure-1.2-36",
+    "domain": "secure",
+    "services": [
+      "Amazon VPC",
+      "NAT gateway"
+    ],
+    "text": "A company is moving an application to a dual-stack VPC with both IPv4 and IPv6 CIDR blocks. Application servers in private subnets must initiate outbound connections to internet services over both IPv4 and IPv6. Security policy states that the subnet routing itself, independent of security groups, must prevent connections from being initiated from the internet to the servers over either protocol.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Route ::/0 from the private subnets to a NAT gateway.",
+        "note": "NAT gateways translate private IPv4 addresses (and support NAT64 for IPv6-only clients reaching IPv4). They do not provide general outbound IPv6 internet access for dual-stack servers."
+      },
+      {
+        "id": "b",
+        "text": "Create an egress-only internet gateway and route ::/0 from the private subnets to it.",
+        "note": "An egress-only internet gateway allows outbound IPv6 connections and their responses, and blocks connections initiated from the internet, which is the IPv6 counterpart of NAT."
+      },
+      {
+        "id": "c",
+        "text": "Route ::/0 from the private subnets to the internet gateway and allow only outbound traffic in the security groups.",
+        "note": "IPv6 addresses are globally routable, so this route lets the internet initiate connections to the servers. Only the security groups would block them, which violates the routing requirement."
+      },
+      {
+        "id": "d",
+        "text": "Create a NAT gateway in a public subnet and route 0.0.0.0/0 from the private subnets to it.",
+        "note": "A NAT gateway gives private IPv4 addresses outbound internet access and does not accept connections initiated from the internet."
+      },
+      {
+        "id": "e",
+        "text": "Assign public IPv4 addresses to the servers and route 0.0.0.0/0 from their subnets to the internet gateway.",
+        "note": "This makes the servers reachable from the internet over IPv4, relying only on security groups, which violates the policy."
+      }
+    ],
+    "correct": [
+      "b",
+      "d"
+    ],
+    "explanation": "For outbound-only internet access, use a NAT gateway for IPv4 and an egress-only internet gateway for IPv6. IPv6 addresses need no translation, so the egress-only internet gateway provides the one-way behavior that NAT provides for IPv4."
+  },
+  {
+    "id": "secure-1.2-37",
+    "domain": "secure",
+    "services": [
+      "Amazon VPC",
+      "Amazon S3",
+      "AWS Organizations"
+    ],
+    "text": "A company processes sensitive data on Amazon EC2 instances in private subnets. The VPC has no internet gateway or NAT gateway, and the instances access Amazon S3 through a gateway VPC endpoint. All of the company's buckets belong to accounts in its organization in AWS Organizations. The security team must prevent data from being copied from the instances to any S3 bucket outside the organization, even if someone on an instance uses access keys from an AWS account that is not in the organization.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Attach a service control policy (SCP) that denies S3 actions unless the aws:ResourceOrgID condition key matches the company's organization ID.",
+        "note": "SCPs apply only to principals in the organization's accounts. Access keys from an outside account are not governed by the SCP, so data could still be copied to an outside bucket."
+      },
+      {
+        "id": "b",
+        "text": "Attach an endpoint policy to the gateway VPC endpoint that allows S3 actions only when the aws:ResourceOrgID condition key matches the company's organization ID.",
+        "note": "Every S3 request from the VPC goes through the endpoint, whatever credentials are used. The endpoint policy denies requests to buckets owned outside the organization."
+      },
+      {
+        "id": "c",
+        "text": "Add an outbound rule to the instances' security group that allows HTTPS only to the AWS managed prefix list for Amazon S3.",
+        "note": "The S3 prefix list covers every bucket in the Region, including other companies' buckets, so it cannot distinguish the organization's buckets from outside ones."
+      },
+      {
+        "id": "d",
+        "text": "Add a bucket policy to every company bucket that denies requests that do not come through the gateway VPC endpoint.",
+        "note": "This protects the company's own buckets from outside access. It does nothing to stop the instances from writing to buckets that the company does not own."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "A VPC endpoint policy controls which resources can be reached through the endpoint, regardless of the caller's credentials, which makes it the network perimeter control against data exfiltration. Bucket policies protect your own buckets, and SCPs control only your own principals. Data perimeters combine all three."
+  },
+  {
+    "id": "secure-1.2-38",
+    "domain": "secure",
+    "services": [
+      "AWS Firewall Manager",
+      "AWS WAF",
+      "AWS Organizations"
+    ],
+    "text": "A company has 60 AWS accounts in AWS Organizations, and new accounts are created every month. The central security team requires that every Application Load Balancer and every Amazon API Gateway stage in every account, including resources created in the future, be protected by a baseline set of AWS WAF rules. Application teams must be able to add their own rules on top of the baseline.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Use AWS CloudFormation StackSets to deploy a web ACL with the baseline rules to every account and Region. Ask application teams to associate the web ACL with their resources.",
+        "note": "StackSets can create the web ACL everywhere, but association depends on each team, so new resources can go unprotected. Nothing enforces the baseline."
+      },
+      {
+        "id": "b",
+        "text": "Enable AWS Security Hub CSPM in all accounts and use its controls to report ALBs and API Gateway stages that have no web ACL. Have the security team remediate findings.",
+        "note": "Security Hub CSPM detects unprotected resources, but remediation is manual and protection is not applied automatically to new resources."
+      },
+      {
+        "id": "c",
+        "text": "Use an AWS Firewall Manager AWS WAF policy with the baseline rule groups, scoped to the organization, with auto remediation for ALBs and API Gateway stages.",
+        "note": "Firewall Manager centrally applies WAF policies across the organization, including new accounts and resources, and lets account owners add their own rules between the first and last rule groups."
+      },
+      {
+        "id": "d",
+        "text": "Subscribe every account to AWS Shield Advanced and turn on automatic application layer DDoS mitigation for all ALBs and API Gateway stages.",
+        "note": "Shield Advanced focuses on DDoS protection, and its automatic mitigation creates rules only in response to attacks. It does not apply the company's baseline rule set."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "AWS Firewall Manager is the service for centrally enforcing AWS WAF, Shield Advanced, security group, and Network Firewall policies across an organization, automatically covering new accounts and resources. StackSets and Security Hub CSPM can deploy or detect, but they do not enforce protection continuously."
+  },
+  {
+    "id": "secure-1.2-39",
+    "domain": "secure",
+    "services": [
+      "AWS WAF",
+      "Amazon CloudFront",
+      "Lambda@Edge",
+      "AWS Shield"
+    ],
+    "text": "An ecommerce company serves its website through Amazon CloudFront. Competitors use automated scrapers to harvest product prices. The scrapers rotate IP addresses and keep their request rate per IP address low. The company wants to block or challenge common bots and scrapers while continuing to allow verified search engine crawlers that are important for its search ranking.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Add an AWS WAF rate-based rule to a web ACL on the CloudFront distribution that blocks IP addresses that send more than 100 requests in 5 minutes.",
+        "note": "Rate-based rules catch high-volume clients. These scrapers rotate IP addresses and stay under per-IP limits, and the rule cannot tell verified search engine crawlers from other bots."
+      },
+      {
+        "id": "b",
+        "text": "Subscribe to AWS Shield Advanced and add the CloudFront distribution as a protected resource.",
+        "note": "Shield Advanced protects against DDoS attacks. Low-rate scraping is not a DDoS attack, and Shield Advanced does not classify bots."
+      },
+      {
+        "id": "c",
+        "text": "Deploy a Lambda@Edge function on viewer requests that inspects the User-Agent header and blocks requests from known scraper user agents.",
+        "note": "This is custom code that must be maintained, and scrapers can easily set a browser or search engine User-Agent to evade it."
+      },
+      {
+        "id": "d",
+        "text": "Add the AWS WAF Bot Control managed rule group to the distribution's web ACL, and configure it to block or challenge unverified bots.",
+        "note": "Bot Control is an AWS managed rule group that identifies bots, distinguishes verified bots such as search engine crawlers, and can block or challenge the rest, with no code to maintain."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "The AWS WAF Bot Control managed rule group classifies bot traffic and verifies legitimate bots such as search engines, so it can block scrapers that stay under rate limits. Rate-based rules address volume per IP, and Shield addresses DDoS."
+  },
+  {
+    "id": "secure-1.2-40",
+    "domain": "secure",
+    "services": [
+      "Amazon GuardDuty",
+      "Amazon S3",
+      "Amazon EventBridge",
+      "Amazon EC2"
+    ],
+    "text": "A company lets customers upload documents to an Amazon S3 bucket by using presigned URLs. Before a downstream workflow processes a document, every newly uploaded object must be scanned for malware, and the scan result must be recorded on the object. The company does not want to manage servers or maintain antivirus signature updates.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Enable GuardDuty Malware Protection for S3 on the bucket with result tagging turned on. Start the downstream workflow from its scan result events in EventBridge.",
+        "note": "GuardDuty Malware Protection for S3 scans new objects automatically with AWS-managed detection, can tag each object with its scan result, and publishes results to EventBridge to trigger the next step."
+      },
+      {
+        "id": "b",
+        "text": "Enable GuardDuty S3 Protection for the account. Start the downstream workflow from the GuardDuty findings in Amazon EventBridge that reference the bucket.",
+        "note": "S3 Protection analyzes S3 data events in CloudTrail for suspicious access, such as requests from known malicious IP addresses. It does not scan object contents for malware."
+      },
+      {
+        "id": "c",
+        "text": "Have EC2 workers download each new object, then run GuardDuty Malware Protection for EC2 on-demand scans of the workers' EBS volumes and tag the object.",
+        "note": "On-demand scans target an EC2 instance's EBS volumes, at most once per hour per instance, not individual S3 objects. The company would also manage the workers, which it wants to avoid."
+      },
+      {
+        "id": "d",
+        "text": "Send S3 event notifications to an Amazon SQS queue that an Auto Scaling group of EC2 instances processes with open source antivirus software that tags each object.",
+        "note": "This can scan and tag objects, but the company must manage the instances and keep the antivirus signatures up to date, which it wants to avoid."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "GuardDuty Malware Protection for S3 is a fully managed scanner for newly uploaded objects, with optional result tagging and EventBridge events for downstream automation. Do not confuse it with GuardDuty S3 Protection, which watches access patterns, or Malware Protection for EC2, which scans EBS volumes."
+  }
+]

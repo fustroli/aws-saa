@@ -1,0 +1,602 @@
+[
+  {
+    "id": "performant-3.1-01",
+    "domain": "performant",
+    "services": [
+      "Amazon S3"
+    ],
+    "text": "An IoT company writes sensor readings to an Amazon S3 bucket as small objects. All objects are written under one prefix that contains the date, such as readings/2026-11-09/. At peak, the application writes about 10,000 objects each second, and many requests fail with HTTP 503 Slow Down errors.\n\nWhich solution will resolve the errors?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Spread the objects across multiple prefixes by adding a hash of the device ID to each key after the date.",
+        "note": "Amazon S3 supports at least 3,500 PUT requests per second for each partitioned prefix. Spreading writes across several prefixes multiplies the supported request rate and removes the throttling."
+      },
+      {
+        "id": "b",
+        "text": "Enable S3 Transfer Acceleration on the bucket and send writes to the accelerate endpoint.",
+        "note": "Transfer Acceleration speeds up long-distance transfers through edge locations. It does not raise the request rate that a single prefix supports."
+      },
+      {
+        "id": "c",
+        "text": "Use multipart upload for every object so that the parts of each object are uploaded to Amazon S3 in parallel.",
+        "note": "Multipart upload helps with large objects. For small objects it adds requests, which makes the request-rate throttling worse."
+      },
+      {
+        "id": "d",
+        "text": "Request a service quota increase for the Amazon S3 PUT request rate on the bucket.",
+        "note": "S3 request rates scale per prefix and are not an adjustable per-bucket service quota. The fix is to distribute the keys across prefixes."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Amazon S3 scales to at least 3,500 PUT/COPY/POST/DELETE and 5,500 GET/HEAD requests per second per prefix. Writing everything under one prefix caps throughput, so distribute keys across prefixes. Remember: 503 Slow Down at high request rates means add prefixes, not acceleration."
+  },
+  {
+    "id": "performant-3.1-02",
+    "domain": "performant",
+    "services": [
+      "Amazon S3"
+    ],
+    "text": "A video platform stores user uploads in an Amazon S3 bucket in us-east-1. Users around the world upload video files of 2 GB to 4 GB over the public internet. Users in Asia and Australia report slow uploads, and uploads often fail partway through so that the whole file must be sent again.\n\nWhich combination of steps will improve upload performance and reliability? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Enable S3 Transfer Acceleration on the bucket and have clients upload to the accelerate endpoint.",
+        "note": "Transfer Acceleration routes uploads to the nearest edge location and then over the AWS backbone to the bucket, which speeds up long-distance uploads."
+      },
+      {
+        "id": "b",
+        "text": "Configure S3 Cross-Region Replication from the bucket to a bucket in ap-southeast-2.",
+        "note": "Replication copies objects after they arrive in the source bucket. It does not speed up uploads into us-east-1."
+      },
+      {
+        "id": "c",
+        "text": "Change the object key naming scheme to spread uploads across more prefixes.",
+        "note": "More prefixes raise the request rate that a bucket supports. The problem is the speed and reliability of large uploads over long distances, not the request rate."
+      },
+      {
+        "id": "d",
+        "text": "Use multipart upload with parts uploaded in parallel, and retry only the parts that fail.",
+        "note": "Multipart upload sends parts in parallel for higher throughput, and a failed part can be retried alone without sending the whole file again."
+      },
+      {
+        "id": "e",
+        "text": "Upload the files to the S3 One Zone-Infrequent Access storage class.",
+        "note": "The storage class affects cost and availability. It does not change upload speed or reliability."
+      }
+    ],
+    "correct": [
+      "a",
+      "d"
+    ],
+    "explanation": "Transfer Acceleration addresses distance by entering the AWS network at an edge location, and multipart upload addresses large-file throughput and restarts. Prefixes address request rates, which are not the issue here. Remember: large, distant uploads mean Transfer Acceleration plus multipart upload."
+  },
+  {
+    "id": "performant-3.1-03",
+    "domain": "performant",
+    "services": [
+      "Amazon S3"
+    ],
+    "text": "A genomics company stores sequence files of about 50 GB each in Amazon S3. An analysis job running on Amazon EC2 in the same Region needs only a few specific segments of each file, and an index gives the byte offset of each segment. Today the job downloads each entire file, which makes it slow.\n\nWhich solution will improve the job's performance MOST?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Enable S3 Transfer Acceleration on the bucket and download through the accelerate endpoint.",
+        "note": "Transfer Acceleration speeds up transfers over long distances. The job runs in the same Region and would still download every byte of each file."
+      },
+      {
+        "id": "b",
+        "text": "Store each file as multiple parts by using multipart upload, and download all parts in parallel.",
+        "note": "Parallel downloads make a full download faster, but the job would still download 50 GB per file when it needs only small segments."
+      },
+      {
+        "id": "c",
+        "text": "Use byte-range GET requests with the offsets from the index to fetch only the needed segments, in parallel.",
+        "note": "A byte-range fetch uses the Range header to retrieve only part of an object. The job downloads only the segments it needs, and parallel range requests add throughput."
+      },
+      {
+        "id": "d",
+        "text": "Copy each file to an Amazon EBS gp3 volume attached to the instance, and have the job read the segments from the volume.",
+        "note": "Copying to EBS still transfers the whole file from Amazon S3 first, which is the step that makes the job slow."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Byte-range fetches let an application read only the bytes it needs from a large object and parallelize those reads. Remember: S3 performance tools are prefixes for request rate, multipart for large uploads, Transfer Acceleration for distance, and byte-range fetches for partial or parallel reads."
+  },
+  {
+    "id": "performant-3.1-04",
+    "domain": "performant",
+    "services": [
+      "Amazon EBS",
+      "Amazon EC2"
+    ],
+    "text": "A company runs a self-managed MySQL database on an Amazon EC2 instance. The database needs a 500 GiB Amazon EBS volume that delivers a consistent 10,000 IOPS and 400 MiB/s of throughput. Testing shows that sub-millisecond latency is not required.\n\nWhich EBS volume configuration will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "A 500 GiB General Purpose SSD (gp2) volume",
+        "note": "A gp2 volume provides 3 IOPS per GiB, so 500 GiB gives a baseline of 1,500 IOPS. Reaching 10,000 IOPS would require a much larger and more expensive volume."
+      },
+      {
+        "id": "b",
+        "text": "A 500 GiB General Purpose SSD (gp3) volume with 10,000 IOPS and 400 MiB/s provisioned",
+        "note": "gp3 lets you provision IOPS and throughput independently of volume size at a lower price than io2. It meets both performance numbers at the lowest cost."
+      },
+      {
+        "id": "c",
+        "text": "A 500 GiB Throughput Optimized HDD (st1) volume",
+        "note": "st1 volumes are designed for large sequential throughput. They cannot deliver 10,000 random IOPS for a database."
+      },
+      {
+        "id": "d",
+        "text": "A 500 GiB Provisioned IOPS SSD (io2) Block Express volume with 10,000 provisioned IOPS",
+        "note": "An io2 volume meets the performance requirement, but provisioned IOPS on io2 cost more than on gp3. Its extra durability and latency features are not required here."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "gp3 decouples IOPS and throughput from capacity, so a modest volume can be provisioned for 10,000 IOPS and 400 MiB/s. gp2 ties IOPS to size, and io2 costs more for performance this workload does not need. Remember: gp3 is the default cost-effective SSD; choose io2 for the highest IOPS, durability, or latency needs."
+  },
+  {
+    "id": "performant-3.1-05",
+    "domain": "performant",
+    "services": [
+      "Amazon EBS",
+      "Amazon EC2"
+    ],
+    "text": "A company is moving a critical Oracle OLTP database to Amazon EC2. The database needs 150,000 sustained IOPS with consistent sub-millisecond latency on a single volume. Because the database stores financial transactions, the company wants the most durable EBS volume type available.\n\nWhich storage solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Attach a General Purpose SSD (gp3) volume with IOPS and throughput provisioned at the gp3 maximum.",
+        "note": "A single gp3 volume cannot reach 150,000 IOPS, and gp3 has lower durability than io2."
+      },
+      {
+        "id": "b",
+        "text": "Use the NVMe instance store volumes of a storage optimized instance.",
+        "note": "Instance store gives very high IOPS, but the data is lost when the instance stops or fails. It is not durable storage for financial transactions."
+      },
+      {
+        "id": "c",
+        "text": "Create a RAID 0 array of several gp3 volumes to combine their IOPS.",
+        "note": "RAID 0 can add up IOPS, but it uses several lower-durability volumes and the failure of any one volume loses the array. It also breaks the single-volume requirement."
+      },
+      {
+        "id": "d",
+        "text": "Attach a Provisioned IOPS SSD (io2) Block Express volume provisioned for 150,000 IOPS.",
+        "note": "io2 Block Express volumes deliver up to 256,000 IOPS with sub-millisecond latency and 99.999% durability, the highest of any EBS volume type."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "io2 Block Express is the EBS choice for the highest IOPS, consistent sub-millisecond latency, and 99.999% durability on one volume. RAID 0 trades durability for performance, and instance store is not persistent. Remember: io2 when the stem demands maximum IOPS and durability together."
+  },
+  {
+    "id": "performant-3.1-06",
+    "domain": "performant",
+    "services": [
+      "Amazon EBS",
+      "Amazon EC2"
+    ],
+    "text": "A company runs a log analytics cluster on Amazon EC2. Each node stores 10 TiB of log data on Amazon EBS. Every hour, jobs scan the data sequentially in large blocks, and each node needs about 400 MiB/s of sustained throughput. Random I/O is rare.\n\nWhich EBS volume type will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Cold HDD (sc1)",
+        "note": "sc1 is the lowest-cost volume type, but a volume is limited to 250 MiB/s. It is designed for data that is accessed infrequently, not scanned every hour at 400 MiB/s."
+      },
+      {
+        "id": "b",
+        "text": "Throughput Optimized HDD (st1)",
+        "note": "st1 provides throughput that scales with size up to 500 MiB/s per volume. A 10 TiB st1 volume sustains about 400 MiB/s for frequently accessed sequential workloads at a low price per GiB."
+      },
+      {
+        "id": "c",
+        "text": "General Purpose SSD (gp3)",
+        "note": "gp3 can provide 400 MiB/s, but SSD storage costs much more per GiB than st1 for 10 TiB of data. SSD IOPS are not needed for sequential scans."
+      },
+      {
+        "id": "d",
+        "text": "Provisioned IOPS SSD (io2)",
+        "note": "io2 is designed for latency-sensitive random I/O. It is the most expensive option and its performance features are not needed for sequential scans."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "st1 is built for large, sequential, frequently accessed workloads such as log processing, data warehouses, and big data. sc1 is cheaper but slower and meant for cold data. Remember: st1 for hot sequential throughput, sc1 for cold data, SSD types for random IOPS."
+  },
+  {
+    "id": "performant-3.1-07",
+    "domain": "performant",
+    "services": [
+      "Amazon EC2",
+      "Amazon EBS",
+      "Amazon EFS"
+    ],
+    "text": "A company runs a self-managed distributed NoSQL database on a cluster of Amazon EC2 instances. The database replicates every write to three nodes and rebuilds a lost node from the other replicas. The workload needs the lowest possible storage latency and hundreds of thousands of random IOPS per node.\n\nWhich storage solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Use an Amazon EFS file system in Max I/O performance mode that all nodes share.",
+        "note": "EFS is a network file system with higher latency than block storage. Max I/O mode supports more parallel clients but increases latency, which breaks the lowest-latency requirement."
+      },
+      {
+        "id": "b",
+        "text": "Use general purpose instances with Provisioned IOPS SSD (io2) Block Express volumes.",
+        "note": "io2 Block Express gives high IOPS and durable storage, but provisioned IOPS are expensive and network-attached storage has higher latency than local NVMe. Durability is already provided by replication."
+      },
+      {
+        "id": "c",
+        "text": "Use general purpose instances with General Purpose SSD (gp3) volumes provisioned at maximum IOPS.",
+        "note": "gp3 is low cost, but one volume cannot provide hundreds of thousands of IOPS, and its latency is higher than local NVMe storage."
+      },
+      {
+        "id": "d",
+        "text": "Use storage optimized instances and store the data on their local NVMe instance store volumes.",
+        "note": "Storage optimized instances provide very high random IOPS with the lowest latency from local NVMe storage, at no extra storage charge. The database's own replication covers the loss of a node's data."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "When an application replicates its own data, instance store on storage optimized instances gives the lowest latency and highest IOPS without paying for durable network storage. Remember: instance store is the answer when data is temporary or protected by the application, and performance and cost matter most."
+  },
+  {
+    "id": "performant-3.1-08",
+    "domain": "performant",
+    "services": [
+      "Amazon EFS"
+    ],
+    "text": "A company's continuous integration build farm uses an Amazon EFS file system that holds 500 GiB of data and uses Bursting throughput. During business hours, the build servers need a steady 200 MiB/s of mostly write throughput for about 10 hours each day. Monitoring shows that throughput is capped near 100 MiB/s for the first few hours of each day and then drops to about 25 MiB/s until the evening. The throughput need is predictable and does not change from day to day.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Switch the file system to Provisioned throughput mode with 200 MiB/s of throughput.",
+        "note": "Provisioned throughput gives a fixed throughput regardless of the amount of stored data or burst credits. For a steady, known requirement it is more cost-effective than paying per GB transferred."
+      },
+      {
+        "id": "b",
+        "text": "Switch the file system to the Max I/O performance mode.",
+        "note": "Performance mode affects how many parallel operations the file system handles and its latency. It does not raise the throughput limit, so builds would still slow down."
+      },
+      {
+        "id": "c",
+        "text": "Switch the file system to Elastic throughput mode.",
+        "note": "Elastic throughput scales automatically and charges for the data that is read and written. For a steady, predictable 200 MiB/s for 10 hours each day, these per-GB charges cost more than provisioning the throughput."
+      },
+      {
+        "id": "d",
+        "text": "Move the build data to an Amazon EBS io2 volume with Multi-Attach enabled and attach it to all build servers.",
+        "note": "Multi-Attach requires a cluster-aware file system to share data safely. Ordinary file systems on a shared volume can be corrupted, so this is not a replacement for a shared file system."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "With Bursting throughput, baseline throughput depends on the amount of data stored (50 KiB/s per GiB, so 25 MiB/s for 500 GiB), and a small file system can burst only to 100 MiB/s until its credits run out. Provisioned throughput fits steady, predictable demand; Elastic fits spiky, unpredictable demand. Remember: EFS throughput mode follows the shape of the workload."
+  },
+  {
+    "id": "performant-3.1-09",
+    "domain": "performant",
+    "services": [
+      "Amazon EFS"
+    ],
+    "text": "A company hosts a content management system on Amazon EC2 instances that share a 200 GiB Amazon EFS file system. The application performs many small, latency-sensitive file operations. Traffic is unpredictable: the file system is mostly idle, but it receives sudden spikes that need up to 1 GiB/s of throughput for a few minutes. The company does not want to plan or manage throughput capacity.\n\nWhich combination of settings will meet these requirements MOST cost-effectively? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Use the General Purpose performance mode.",
+        "note": "General Purpose performance mode has the lowest per-operation latency and is recommended for latency-sensitive workloads such as content management systems."
+      },
+      {
+        "id": "b",
+        "text": "Use the Max I/O performance mode.",
+        "note": "Max I/O supports very high levels of parallelism, but it has higher per-operation latency, which hurts small, latency-sensitive operations. It also cannot be used with Elastic throughput."
+      },
+      {
+        "id": "c",
+        "text": "Use Elastic throughput mode.",
+        "note": "Elastic throughput scales up and down automatically with the workload, and the company pays only for the throughput it uses. This fits spiky, unpredictable traffic without capacity planning."
+      },
+      {
+        "id": "d",
+        "text": "Use Provisioned throughput mode set to 1 GiB/s.",
+        "note": "Provisioned throughput would handle the spikes, but the company would pay for 1 GiB/s all day while the file system is mostly idle, and it would have to manage the setting."
+      },
+      {
+        "id": "e",
+        "text": "Use Bursting throughput mode.",
+        "note": "With 200 GiB of data, Bursting throughput has a low baseline, and bursting for small file systems does not reach 1 GiB/s. Spikes would be throttled."
+      }
+    ],
+    "correct": [
+      "a",
+      "c"
+    ],
+    "explanation": "General Purpose performance mode gives the lowest latency, and Elastic throughput handles unpredictable spikes with pay-per-use pricing. Max I/O trades latency for parallelism. Remember: General Purpose plus Elastic is the default for most EFS workloads; Provisioned only for steady, known demand."
+  },
+  {
+    "id": "performant-3.1-10",
+    "domain": "performant",
+    "services": [
+      "Amazon FSx for Lustre",
+      "Amazon S3"
+    ],
+    "text": "A research institute stores a 200 TB dataset in Amazon S3. A new high performance computing (HPC) cluster on Amazon EC2 must process the dataset through a shared POSIX file system with sub-millisecond latency and hundreds of GB/s of aggregate throughput. Results must be written back to the same S3 bucket. The institute wants to avoid building custom copy jobs.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Amazon EFS file system with Elastic throughput. Use AWS DataSync to copy the dataset from Amazon S3 to the file system and to copy results back.",
+        "note": "EFS is a shared POSIX file system, but it is not designed for hundreds of GB/s of HPC throughput at sub-millisecond latency, and DataSync tasks add copy steps in both directions."
+      },
+      {
+        "id": "b",
+        "text": "Create an Amazon FSx for NetApp ONTAP file system. Copy the dataset to the file system with a scheduled script and copy results back to Amazon S3.",
+        "note": "FSx for ONTAP provides low-latency NFS and SMB storage for enterprise workloads, but it has no native link to an S3 bucket and is not a parallel HPC file system. The scripts are the custom copy jobs the institute wants to avoid."
+      },
+      {
+        "id": "c",
+        "text": "Create an Amazon FSx for Lustre file system and link it to the S3 bucket with a data repository association. Export results back to the bucket.",
+        "note": "FSx for Lustre is a parallel file system for HPC with sub-millisecond latency and very high throughput. A data repository association loads S3 objects as files on first access and exports changed files back to Amazon S3."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon FSx for Windows File Server file system. Mount it on the cluster nodes and copy the dataset into it.",
+        "note": "FSx for Windows File Server provides SMB shares for Windows workloads. It is not a POSIX file system for Linux HPC nodes and has no native S3 integration."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "FSx for Lustre is the HPC file system, and its data repository association with Amazon S3 presents objects as files and writes results back. Remember: HPC plus data in S3 means FSx for Lustre; Windows SMB means FSx for Windows File Server; multiprotocol enterprise NAS means FSx for ONTAP."
+  },
+  {
+    "id": "performant-3.1-11",
+    "domain": "performant",
+    "services": [
+      "Amazon FSx for Lustre",
+      "Amazon S3"
+    ],
+    "text": "Once a week, an engineering firm runs a 6-hour simulation on a fleet of Amazon EC2 instances. The simulation reads input files from Amazon S3 and needs a high-throughput parallel file system while it runs. Results are exported back to Amazon S3, and the file system is deleted when the run finishes. The input data can always be reloaded from Amazon S3.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Amazon FSx for Lustre persistent file system linked to the S3 bucket for each run.",
+        "note": "Persistent file systems replicate data within the Availability Zone for long-running workloads. That durability costs more and is not needed for a short run whose data is reloaded from Amazon S3."
+      },
+      {
+        "id": "b",
+        "text": "Create an Amazon EFS file system with Provisioned throughput and copy the input files into it before each run.",
+        "note": "EFS is a durable shared file system, but it is not a parallel HPC file system and provisioning high throughput for short runs is costly. Copying the input adds work."
+      },
+      {
+        "id": "c",
+        "text": "Attach a Provisioned IOPS SSD (io2) volume with Multi-Attach to the instances and copy the input files to it.",
+        "note": "Multi-Attach volumes need a cluster-aware file system, and provisioned IOPS are expensive. This is not a parallel file system with S3 integration."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon FSx for Lustre scratch file system linked to the S3 bucket for each run.",
+        "note": "Scratch file systems are designed for temporary storage and short-term processing. They do not replicate data, which lowers cost, and the data is safe in Amazon S3."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "FSx for Lustre scratch file systems are the low-cost choice for short-lived processing where the source data lives in Amazon S3. Persistent file systems are for long-running workloads that need data replication. Remember: scratch for temporary jobs, persistent for long-term storage."
+  },
+  {
+    "id": "performant-3.1-12",
+    "domain": "performant",
+    "services": [
+      "Amazon FSx for NetApp ONTAP"
+    ],
+    "text": "A company is migrating an on-premises network-attached storage (NAS) system to AWS. Linux application servers read and write a set of project folders over NFS, and Windows users open the same folders over SMB. A database server uses iSCSI LUNs from the same system. The storage must keep serving all clients with automatic failover if an Availability Zone fails.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Deploy two Single-AZ Amazon FSx for NetApp ONTAP file systems in different Availability Zones, and replicate the volumes between them with SnapMirror.",
+        "note": "FSx for ONTAP serves NFS, SMB, and iSCSI, and SnapMirror can copy volumes to a second file system. Failing over means breaking the replication and repointing every client by hand, so this is not automatic and adds operational work."
+      },
+      {
+        "id": "b",
+        "text": "Deploy a Multi-AZ Amazon FSx for Windows File Server file system for the folders, and attach an Amazon EBS io2 volume to the database server.",
+        "note": "FSx for Windows File Server provides SMB shares with automatic Multi-AZ failover, but it does not serve NFS to the Linux servers. An EBS volume lives in one Availability Zone and does not replace the iSCSI LUNs."
+      },
+      {
+        "id": "c",
+        "text": "Deploy a Multi-AZ Amazon FSx for NetApp ONTAP file system, and migrate the folders and LUNs to one storage virtual machine.",
+        "note": "FSx for ONTAP serves the same volumes over NFS and SMB and serves LUNs over iSCSI. A Multi-AZ file system keeps a standby file server in a second Availability Zone and fails over automatically, so one managed service meets every requirement."
+      },
+      {
+        "id": "d",
+        "text": "Deploy a Multi-AZ Amazon FSx for OpenZFS file system for the folders, and serve the database from an Amazon EBS io2 Block Express volume.",
+        "note": "FSx for OpenZFS serves NFS with Multi-AZ failover, but it does not support SMB, so the Windows users cannot open the folders. An EBS volume is not iSCSI storage and stays in one Availability Zone."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "FSx for NetApp ONTAP is the managed service for multiprotocol NAS (NFS and SMB on the same data, plus iSCSI block storage), and its Multi-AZ deployment fails over automatically. Two Single-AZ file systems with SnapMirror work, but failover is manual. Remember: EFS and FSx for OpenZFS are NFS, FSx for Windows is SMB, and FSx for ONTAP does all three."
+  },
+  {
+    "id": "performant-3.1-13",
+    "domain": "performant",
+    "services": [
+      "Amazon FSx for Windows File Server"
+    ],
+    "text": "An engineering firm runs a Windows CAD application against a Multi-AZ Amazon FSx for Windows File Server file system with 12 TiB of HDD storage. Each project contains thousands of small files, and most file opens are for projects that have not been used recently, so they miss the file server's in-memory cache. Monitoring shows that disk IOPS stay at the file system's limit, while network throughput and file server CPU are low. The firm needs sub-millisecond latency for these file operations and must keep the existing file system, its DNS name, and its shares.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Update the file system's storage type from HDD to SSD, and let the storage optimization process complete in the background.",
+        "note": "FSx for Windows File Server can change an existing file system from HDD to SSD in place. SSD storage gives sub-millisecond latency for operations that go to disk, and the file system keeps its DNS name and shares."
+      },
+      {
+        "id": "b",
+        "text": "Increase the HDD storage capacity of the file system so that it receives a higher baseline level of disk IOPS.",
+        "note": "HDD disk IOPS scale with storage capacity, so more capacity raises the IOPS limit. However, HDD storage still has single-digit millisecond latency for each disk operation, so it cannot meet the sub-millisecond requirement."
+      },
+      {
+        "id": "c",
+        "text": "Restore the latest backup to a new file system that uses SSD storage, and move users to the new file system's DNS name.",
+        "note": "Restoring to an SSD file system gives SSD latency, but it creates a new file system with a new DNS name. This breaks the requirement to keep the existing file system and shares."
+      },
+      {
+        "id": "d",
+        "text": "Increase the throughput capacity of the file system so that the file server gets more memory for its in-memory cache.",
+        "note": "Higher throughput capacity adds network throughput and cache memory, which helps data that is read repeatedly. Most opens here miss the cache and go to HDD storage, so their latency stays in single-digit milliseconds."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "FSx for Windows File Server serves cached data from memory, but cache misses go to the storage volumes: sub-millisecond on SSD and single-digit milliseconds on HDD. An HDD file system can be upgraded to SSD in place. Remember: more HDD capacity adds IOPS, more throughput capacity adds cache and network, but only SSD lowers disk latency."
+  },
+  {
+    "id": "performant-3.1-14",
+    "domain": "performant",
+    "services": [
+      "AWS Storage Gateway",
+      "Amazon S3"
+    ],
+    "text": "A company runs an on-premises application that requires iSCSI block storage. The application must have low-latency access to its entire 20 TB dataset, so all data must stay on premises. The company wants asynchronous point-in-time backups of the volumes in AWS that it can restore to Amazon EBS if needed.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Deploy AWS Storage Gateway as a Volume Gateway with stored volumes.",
+        "note": "Stored volumes keep the entire dataset on premises for low-latency access and asynchronously back it up to AWS as point-in-time snapshots, which can be restored as EBS volumes."
+      },
+      {
+        "id": "b",
+        "text": "Deploy AWS Storage Gateway as an Amazon S3 File Gateway.",
+        "note": "S3 File Gateway presents NFS and SMB file shares backed by Amazon S3 objects. It does not provide iSCSI block storage."
+      },
+      {
+        "id": "c",
+        "text": "Deploy AWS Storage Gateway as a Volume Gateway with cached volumes.",
+        "note": "Cached volumes keep the primary data in Amazon S3 and only frequently accessed data on premises. The entire dataset would not be available locally with low latency."
+      },
+      {
+        "id": "d",
+        "text": "Deploy AWS Storage Gateway as a Tape Gateway.",
+        "note": "Tape Gateway presents a virtual tape library to backup software. It does not provide iSCSI block volumes for an application."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Volume Gateway stored volumes keep all data local and back it up asynchronously to AWS as EBS snapshots. Cached volumes keep the primary copy in AWS and cache hot data locally. Remember: stored when everything must be local, cached when only hot data needs to be."
+  },
+  {
+    "id": "performant-3.1-15",
+    "domain": "performant",
+    "services": [
+      "Amazon EBS"
+    ],
+    "text": "A production database on an Amazon EC2 instance uses a General Purpose SSD (gp3) volume with the default 125 MiB/s of throughput. Monitoring shows that the volume is throughput-bound during nightly batch jobs. The company must raise the volume's throughput to 500 MiB/s before tonight's batch run without stopping the instance or the database.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Use Amazon EBS Elastic Volumes to modify the volume's provisioned throughput to 500 MiB/s.",
+        "note": "Elastic Volumes changes a volume's size, type, IOPS, or throughput while it stays attached and in use. A gp3 volume's throughput can be raised without stopping the instance."
+      },
+      {
+        "id": "b",
+        "text": "Stop the instance, change it to a larger instance type, and start it again.",
+        "note": "This requires stopping the instance, and a larger instance does not change the throughput that the gp3 volume is provisioned for."
+      },
+      {
+        "id": "c",
+        "text": "Attach a second gp3 volume and configure RAID 0 across both volumes in the operating system.",
+        "note": "RAID 0 requires rebuilding the file system and moving the data, which interrupts the database. It is more complex than changing the volume's settings."
+      },
+      {
+        "id": "d",
+        "text": "Create a snapshot of the volume, create a Provisioned IOPS SSD (io2) volume from the snapshot, and replace the original volume.",
+        "note": "Replacing the volume requires detaching it, which stops the database. io2 is also not needed to reach 500 MiB/s."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "EBS Elastic Volumes modifies performance settings of an attached volume with no downtime, and gp3 throughput can be provisioned independently of size. Remember: to change EBS performance live, modify the volume instead of replacing it."
+  },
+  {
+    "id": "performant-3.1-16",
+    "domain": "performant",
+    "services": [
+      "Amazon EC2",
+      "Amazon EBS"
+    ],
+    "text": "A company runs a reporting application on a small general purpose Amazon EC2 instance with one General Purpose SSD (gp3) volume. To speed up reports, an engineer raised the volume's provisioned throughput from 125 MiB/s to 1,000 MiB/s, but measured throughput barely changed. Volume metrics show that the volume is well below its provisioned throughput. The instance's CPU and memory are underused, but the instance's EBSByteBalance% metric drops to 0% during reports.\n\nWhich solution will increase storage throughput?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Attach a second gp3 volume and stripe both volumes with RAID 0.",
+        "note": "RAID 0 adds volume performance, but the instance's EBS bandwidth limit applies to all attached volumes combined. Total throughput would stay the same."
+      },
+      {
+        "id": "b",
+        "text": "Change the volume type to Provisioned IOPS SSD (io2) with the same throughput.",
+        "note": "The volume is not the bottleneck; it is below its provisioned throughput. Any volume type is still limited by the instance's EBS bandwidth."
+      },
+      {
+        "id": "c",
+        "text": "Change the instance to an instance type that has a higher maximum Amazon EBS bandwidth.",
+        "note": "Each instance type has its own maximum EBS bandwidth. The EBSByteBalance% metric shows that the instance's EBS burst bandwidth is exhausted, so a type with higher EBS bandwidth removes the limit."
+      },
+      {
+        "id": "d",
+        "text": "Enable enhanced networking with the Elastic Network Adapter (ENA) on the instance.",
+        "note": "ENA increases the instance's network performance for general network traffic. It does not change the instance type's EBS bandwidth limit."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "EBS performance is capped by both the volume and the instance. When the volume is below its provisioned rate and EBSByteBalance% is exhausted, the instance's EBS bandwidth is the limit. Remember: size the instance for EBS bandwidth, not only the volume."
+  },
+  {
+    "id": "performant-3.1-17",
+    "domain": "performant",
+    "services": [
+      "Amazon S3",
+      "Amazon EC2"
+    ],
+    "text": "A machine learning team trains models on Amazon EC2 instances that all run in one Availability Zone. Each training job reads millions of small objects many times, and the team needs consistent single-digit millisecond request latency. The training data is a copy, and the source data is kept in an S3 Standard bucket.\n\nWhich storage solution will provide the LOWEST request latency for the training jobs?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Copy the training data to the S3 One Zone-Infrequent Access storage class in a bucket in the same Region as the instances.",
+        "note": "S3 One Zone-IA lowers storage cost by storing data in one Availability Zone, but its latency is the same as S3 Standard and it adds retrieval charges for data that is read many times."
+      },
+      {
+        "id": "b",
+        "text": "Copy the training data to an S3 Express One Zone directory bucket in the instances' Availability Zone.",
+        "note": "S3 Express One Zone stores data in one Availability Zone that you choose and is built for consistent single-digit millisecond latency and very high request rates. Co-locating it with the compute minimizes latency, and the source copy protects against an Availability Zone loss."
+      },
+      {
+        "id": "c",
+        "text": "Keep the data in S3 Standard and spread the objects across more prefixes.",
+        "note": "More prefixes raise the request rate that a bucket supports, but they do not lower the latency of each request to single-digit milliseconds."
+      },
+      {
+        "id": "d",
+        "text": "Enable S3 Transfer Acceleration on the S3 Standard bucket and read through the accelerate endpoint.",
+        "note": "Transfer Acceleration speeds up long-distance transfers over the internet. The instances are in the same Region, so it does not lower request latency."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "S3 Express One Zone is the high-performance S3 storage class for latency-sensitive, request-heavy workloads such as ML training, placed in the same Availability Zone as the compute. Because it is single-AZ, keep a durable source copy elsewhere. Remember: Express One Zone for speed, One Zone-IA for cheap infrequent data."
+  }
+]

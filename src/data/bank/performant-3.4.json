@@ -1,0 +1,610 @@
+[
+  {
+    "id": "performant-3.4-01",
+    "domain": "performant",
+    "services": [
+      "Amazon CloudFront",
+      "Amazon S3"
+    ],
+    "text": "A company hosts the images, JavaScript and CSS files for its website in an Amazon S3 bucket in us-east-1. Users in Europe and Asia report that pages load slowly because each static file is downloaded from us-east-1. The files change a few times each week. The company wants to improve load times for users worldwide with the LEAST operational overhead.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Amazon CloudFront distribution with the S3 bucket as the origin, secured with origin access control, and serve the files through it.",
+        "note": "CloudFront caches the static files at edge locations close to users, so most requests never travel to us-east-1. It is a single managed configuration, and invalidations or versioned file names handle the weekly changes."
+      },
+      {
+        "id": "b",
+        "text": "Configure S3 Cross-Region Replication to buckets in eu-west-1 and ap-southeast-1, and use Amazon Route 53 latency-based routing to direct users to the nearest bucket.",
+        "note": "Replicated buckets would bring files closer to some users, but the company must manage several buckets, replication rules and DNS records, and users far from all three Regions still see high latency."
+      },
+      {
+        "id": "c",
+        "text": "Enable S3 Transfer Acceleration on the bucket, and change the website to load every static file through the bucket's accelerated endpoint.",
+        "note": "Transfer Acceleration routes individual transfers over the AWS network to the bucket, which mainly helps large uploads over long distances. It does not cache content, so every request still goes to us-east-1."
+      },
+      {
+        "id": "d",
+        "text": "Move the static files to an Amazon EFS file system mounted on web servers in three AWS Regions behind an Application Load Balancer in each Region.",
+        "note": "This adds servers, file systems and load balancers to manage in three Regions, and it still lacks a global caching layer. It is far more operational overhead than a CDN."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Amazon CloudFront is the default answer for speeding up delivery of static content to a global audience: it caches at hundreds of edge locations with no servers to manage. Transfer Acceleration speeds up transfers to and from a bucket but does not cache."
+  },
+  {
+    "id": "performant-3.4-02",
+    "domain": "performant",
+    "services": [
+      "AWS Global Accelerator",
+      "Elastic Load Balancing"
+    ],
+    "text": "A game studio runs multiplayer game servers on Amazon EC2 behind Network Load Balancers in us-east-1, eu-central-1 and ap-northeast-1. The game uses a custom protocol over UDP. Players around the world report high latency and jitter caused by routing over the public internet. The studio wants players to connect to fixed IP addresses and be routed automatically to the closest healthy Region.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Amazon CloudFront distribution that uses Anycast static IPs, with the three Network Load Balancers as origins.",
+        "note": "CloudFront Anycast static IPs give fixed entry addresses, but CloudFront proxies only HTTP-based traffic (HTTP, HTTPS and WebSocket). It cannot carry a custom UDP game protocol."
+      },
+      {
+        "id": "b",
+        "text": "Create Amazon Route 53 latency-based alias records that point to the three Network Load Balancers, with health checks enabled.",
+        "note": "Latency-based routing sends players to a nearby Region, but traffic still crosses the public internet to the NLB, so latency and jitter remain. Each Region has its own NLB addresses rather than one fixed global set, and DNS caching delays failover."
+      },
+      {
+        "id": "c",
+        "text": "Create an AWS Global Accelerator standard accelerator with a UDP listener and an endpoint group per Region that holds the Region's NLB.",
+        "note": "Global Accelerator provides two static anycast IP addresses, supports TCP and UDP, and carries traffic from the nearest edge location over the AWS global network to the closest healthy endpoint group. This reduces latency and jitter."
+      },
+      {
+        "id": "d",
+        "text": "Create AWS Direct Connect connections from each Region to major internet exchange points used by players.",
+        "note": "Direct Connect links customer networks to AWS. Players connect from home internet services, so Direct Connect cannot improve their path, and it does not provide static entry IPs."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Choose Global Accelerator for non-HTTP (TCP or UDP) applications that need static IP addresses, fast regional failover and routing over the AWS backbone. Choose CloudFront when HTTP content can be cached at the edge."
+  },
+  {
+    "id": "performant-3.4-03",
+    "domain": "performant",
+    "services": [
+      "Amazon CloudFront",
+      "CloudFront Functions"
+    ],
+    "text": "A news website serves millions of requests each minute through Amazon CloudFront. On every viewer request, the company wants to rewrite friendly URLs to versioned paths, normalise the Accept-Language header to a small set of values to improve the cache hit ratio, and add security headers to every response. The logic is simple, needs no network calls, and must add as little latency and cost as possible.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Implement the logic in Lambda@Edge functions associated with the viewer request and viewer response events.",
+        "note": "Lambda@Edge can perform this logic, but it runs in Regional edge caches with higher startup latency and costs more per request than CloudFront Functions. It suits heavier logic that needs network access or the request body."
+      },
+      {
+        "id": "b",
+        "text": "Implement the logic in CloudFront Functions associated with the viewer request and viewer response events.",
+        "note": "CloudFront Functions run lightweight JavaScript at every edge location with sub-millisecond start-up, at a fraction of the cost of Lambda@Edge. They are designed for URL rewrites, header manipulation and cache key normalisation at high request rates."
+      },
+      {
+        "id": "c",
+        "text": "Implement the logic in an AWS Lambda function behind an Application Load Balancer that CloudFront uses as its origin.",
+        "note": "Running the logic at the origin means every request must miss the cache to be rewritten, and header normalisation at the origin cannot improve the CloudFront cache key. This adds latency and origin load."
+      },
+      {
+        "id": "d",
+        "text": "Implement the logic in Amazon API Gateway request and response mapping templates in front of the origin.",
+        "note": "API Gateway mapping templates transform requests at the origin side. They cannot change requests before CloudFront looks up the cache, and they add a hop and cost for every request."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "CloudFront Functions handle high-volume, lightweight viewer-side tasks such as rewrites, redirects, header changes and cache key normalisation. Use Lambda@Edge when the logic needs network calls, the request body, longer execution or origin-facing events."
+  },
+  {
+    "id": "performant-3.4-04",
+    "domain": "performant",
+    "services": [
+      "Amazon CloudFront",
+      "Lambda@Edge"
+    ],
+    "text": "A media company uses Amazon CloudFront to deliver premium video. Before any request is served, including requests for cached content, the company must validate the viewer's session token by calling its existing token introspection service over HTTPS, and must reject requests with invalid tokens. The introspection call usually completes in about 100 ms.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Use a CloudFront Function on the viewer request event that calls the introspection service and returns a 403 response for invalid tokens.",
+        "note": "CloudFront Functions cannot make network calls, so a function cannot reach the introspection service."
+      },
+      {
+        "id": "b",
+        "text": "Use an AWS WAF web ACL on the distribution with a rule that sends the token to the introspection service for validation.",
+        "note": "AWS WAF inspects requests against rules and managed rule groups. It cannot call an external service to validate a token."
+      },
+      {
+        "id": "c",
+        "text": "Use a Lambda@Edge function on the origin request event that calls the introspection service and returns a 403 response for invalid tokens.",
+        "note": "Origin request functions run only when CloudFront must go to the origin, that is, on cache misses. Requests for cached content would be served without validation."
+      },
+      {
+        "id": "d",
+        "text": "Use a Lambda@Edge function on the viewer request event that calls the introspection service and returns a 403 response for invalid tokens.",
+        "note": "Viewer request functions run on every request before the cache is checked, and Lambda@Edge can make network calls. This validates every request, including those for cached content."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Two decisions: CloudFront Functions vs Lambda@Edge (only Lambda@Edge can make network calls), and viewer vs origin events (viewer events run on every request, origin events only on cache misses)."
+  },
+  {
+    "id": "performant-3.4-05",
+    "domain": "performant",
+    "services": [
+      "Amazon CloudFront"
+    ],
+    "text": "A company serves product images through Amazon CloudFront with an Application Load Balancer as the origin. The images vary only by a size query string parameter. Marketing links append unique tracking parameters such as utm_source and utm_campaign to the URLs. The cache behavior uses a cache policy that includes all query strings and all headers in the cache key. The CloudFront cache hit ratio is below 10%, and the origin is overloaded.\n\nWhich change will MOST improve the cache hit ratio?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Change the cache behavior to a cache policy that includes only the size query string in the cache key and excludes headers.",
+        "note": "The cache key decides which requests share a cached object. Including only the parameter that changes the response lets requests with different tracking parameters and headers hit the same cached image."
+      },
+      {
+        "id": "b",
+        "text": "Increase the default TTL and maximum TTL in the existing cache policy to 7 days so that cached images stay at the edge longer.",
+        "note": "Longer TTLs keep objects cached longer, but nearly every request has a unique cache key because of the tracking parameters and headers, so they still miss the cache."
+      },
+      {
+        "id": "c",
+        "text": "Add more targets to the Application Load Balancer and enable cross-zone load balancing.",
+        "note": "More origin capacity reduces overload but does nothing to the cache hit ratio; requests still miss the cache."
+      },
+      {
+        "id": "d",
+        "text": "Enable compression in the cache policy, and configure the origin to return Cache-Control: max-age headers.",
+        "note": "Compression reduces transfer size and Cache-Control controls expiry, but neither changes the cache key. Unique keys still cause cache misses."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Keep the CloudFront cache key minimal: include only the query strings, headers and cookies that change the response. Values the origin needs but that do not affect the object can be forwarded with an origin request policy without fragmenting the cache."
+  },
+  {
+    "id": "performant-3.4-06",
+    "domain": "performant",
+    "services": [
+      "Amazon Route 53",
+      "Elastic Load Balancing"
+    ],
+    "text": "A company runs an HTTPS application behind Application Load Balancers in us-west-2, eu-central-1 and ap-southeast-2. The application's domain is hosted in Amazon Route 53. The company wants each user to be sent to the Region that gives that user the lowest network latency, and to stop sending users to a Region whose load balancer is unhealthy.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create geolocation records for each continent that point to the closest Region's load balancer, with a default record.",
+        "note": "Geolocation routing uses the user's location, not measured latency. Network latency does not always match geography, and users in unlisted locations go to the default Region."
+      },
+      {
+        "id": "b",
+        "text": "Create weighted alias records with equal weights for the three load balancers, with health checks enabled.",
+        "note": "Weighted routing splits traffic by ratio regardless of where users are, so many users would be sent to a distant Region."
+      },
+      {
+        "id": "c",
+        "text": "Create latency-based alias records for the three load balancers, with Evaluate Target Health enabled.",
+        "note": "Latency-based routing answers each DNS query with the Region that has the lowest measured latency for that user's network, and alias records with Evaluate Target Health skip an unhealthy load balancer. It uses the existing hosted zone at very low cost."
+      },
+      {
+        "id": "d",
+        "text": "Create an AWS Global Accelerator accelerator with an endpoint group in each Region that contains the Region's load balancer.",
+        "note": "Global Accelerator also routes users to the nearest healthy Region and adds static IPs and backbone routing, but it adds a fixed hourly fee and data transfer premium that the requirements do not justify."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Route 53 latency-based routing is the cost-effective way to send users to the lowest-latency Region for DNS-addressed applications. Choose Global Accelerator when you also need static IPs, non-HTTP protocols or failover that does not depend on DNS caching."
+  },
+  {
+    "id": "performant-3.4-07",
+    "domain": "performant",
+    "services": [
+      "AWS Direct Connect"
+    ],
+    "text": "A company needs to transfer about 15 Gbps of sustained traffic between its data center and its VPCs in one AWS Region over a private path with consistent latency. The data center reaches a single AWS Direct Connect location. The network team wants to configure and manage the capacity as one logical connection.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Order two 10 Gbps hosted connections from an AWS Direct Connect Partner at the location, and bundle them into a link aggregation group (LAG).",
+        "note": "A LAG can contain only dedicated connections. Hosted connections from a Direct Connect Partner cannot be added to a LAG, so they cannot be managed as one logical connection."
+      },
+      {
+        "id": "b",
+        "text": "Order two 10 Gbps dedicated connections at the Direct Connect location, and bundle them into a link aggregation group (LAG).",
+        "note": "A LAG uses LACP to bundle dedicated connections of the same bandwidth that terminate at the same Direct Connect endpoint into one logical connection. Two 10 Gbps links give 20 Gbps of private, consistent bandwidth."
+      },
+      {
+        "id": "c",
+        "text": "Create multiple AWS Site-to-Site VPN connections to a transit gateway, and use equal-cost multi-path (ECMP) routing to aggregate their bandwidth.",
+        "note": "ECMP across VPN tunnels can aggregate bandwidth, but the tunnels run over the public internet, so latency is not consistent, and every tunnel is managed separately."
+      },
+      {
+        "id": "d",
+        "text": "Order one 10 Gbps dedicated connection and five 1 Gbps dedicated connections, and bundle all six into a link aggregation group (LAG).",
+        "note": "All connections in a LAG must have the same bandwidth, and a LAG can hold at most four connections below 100 Gbps. This combination cannot form a LAG."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "A Direct Connect LAG combines dedicated connections of the same port speed, at the same Direct Connect endpoint, into one logical connection (up to four connections below 100 Gbps). Hosted connections and mixed speeds cannot join a LAG, and VPN with ECMP aggregates bandwidth only over the internet."
+  },
+  {
+    "id": "performant-3.4-08",
+    "domain": "performant",
+    "services": [
+      "AWS Direct Connect",
+      "Direct Connect gateway"
+    ],
+    "text": "A company has a 10 Gbps AWS Direct Connect connection at a location near us-east-1, with a private virtual interface to a VPC in us-east-1. The company is launching new VPCs in us-west-2 and eu-west-1. Applications in the data center need private connectivity with consistent performance to all three VPCs. The VPCs do not need to communicate with each other.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create inter-Region VPC peering connections from the us-east-1 VPC to the new VPCs, and route on-premises traffic through the us-east-1 VPC.",
+        "note": "VPC peering is not transitive. Traffic from the data center that enters the us-east-1 VPC cannot be routed through it to a peered VPC."
+      },
+      {
+        "id": "b",
+        "text": "Create AWS Site-to-Site VPN connections from the data center to virtual private gateways in the two new VPCs, and keep the existing private virtual interface.",
+        "note": "Site-to-Site VPN provides private, encrypted connectivity, but it runs over the public internet, so performance is not consistent."
+      },
+      {
+        "id": "c",
+        "text": "Order new Direct Connect connections at locations near us-west-2 and eu-west-1, and create a private virtual interface on each.",
+        "note": "Additional Direct Connect connections would work, but they add port and circuit costs and lead times that the existing connection can avoid."
+      },
+      {
+        "id": "d",
+        "text": "Create a Direct Connect gateway with a private virtual interface on the existing connection, and associate all three VPCs' virtual private gateways with it.",
+        "note": "A Direct Connect gateway is a global resource that lets one private virtual interface reach VPCs through virtual private gateways in multiple AWS Regions. The existing connection serves all three VPCs."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "A Direct Connect gateway lets a single Direct Connect connection reach VPCs in many Regions. It does not route traffic between the associated VPCs; for VPC-to-VPC routing, combine it with a transit gateway."
+  },
+  {
+    "id": "performant-3.4-09",
+    "domain": "performant",
+    "services": [
+      "AWS Direct Connect",
+      "AWS Site-to-Site VPN"
+    ],
+    "text": "A healthcare company connects its data center to AWS with an AWS Direct Connect connection. A new compliance rule requires all traffic between the data center and its VPC to be encrypted with IPsec. The company also needs the consistent latency and throughput that Direct Connect provides, and it does not want to modify its applications.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an AWS Site-to-Site VPN connection whose IPsec tunnels run over the Direct Connect connection through a public virtual interface.",
+        "note": "A Site-to-Site VPN over a Direct Connect public virtual interface encrypts traffic with IPsec while it travels on the dedicated Direct Connect path. This meets the encryption and consistent performance requirements without application changes."
+      },
+      {
+        "id": "b",
+        "text": "Create an AWS Site-to-Site VPN connection over the internet as the primary path, and keep Direct Connect as a backup.",
+        "note": "This encrypts traffic with IPsec, but the primary path is the public internet, so latency and throughput are not consistent."
+      },
+      {
+        "id": "c",
+        "text": "Keep the existing private virtual interface unchanged, because traffic on Direct Connect is private and does not traverse the public internet.",
+        "note": "Direct Connect is a private connection, but traffic on a private virtual interface is not encrypted by IPsec, so this fails the compliance rule."
+      },
+      {
+        "id": "d",
+        "text": "Deploy AWS Client VPN, and have each on-premises server connect to the Client VPN endpoint over the Direct Connect connection.",
+        "note": "Client VPN is a TLS-based remote access service for individual users and devices, not IPsec site-to-site connectivity. Installing clients on every server is also an application-level change."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Direct Connect is private but not encrypted. To add IPsec, run a Site-to-Site VPN over Direct Connect (a public VIF, or a private IP VPN over a transit VIF). The result combines encryption with Direct Connect's consistent network performance."
+  },
+  {
+    "id": "performant-3.4-10",
+    "domain": "performant",
+    "services": [
+      "AWS Transit Gateway",
+      "AWS Resource Access Manager",
+      "AWS Site-to-Site VPN"
+    ],
+    "text": "A company has 60 VPCs in one AWS Region spread across 12 AWS accounts in AWS Organizations, and it adds new VPCs every month. Every VPC must be able to communicate with every other VPC and with the on-premises network, which connects through an AWS Site-to-Site VPN. The VPC CIDR blocks do not overlap.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create VPC peering connections between every pair of VPCs, and create a Site-to-Site VPN connection from the on-premises network to each VPC.",
+        "note": "A full mesh of 60 VPCs needs 1,770 peering connections and route entries, growing with every new VPC, plus 60 VPN connections. Peering is not transitive, so no shared path exists."
+      },
+      {
+        "id": "b",
+        "text": "Deploy a transit VPC with third-party VPN appliances on Amazon EC2, and connect every VPC and the on-premises network to those appliances.",
+        "note": "A transit VPC provides hub-and-spoke routing, but the company must operate, scale and patch the EC2 appliances, which adds operational overhead."
+      },
+      {
+        "id": "c",
+        "text": "Create a transit gateway, share it with the other accounts through AWS Resource Access Manager, and attach every VPC and the Site-to-Site VPN.",
+        "note": "A transit gateway is a managed regional hub that routes transitively between all attached VPCs and the VPN. Each new VPC needs only one attachment and route update."
+      },
+      {
+        "id": "d",
+        "text": "Expose each VPC's workloads as VPC endpoint services with AWS PrivateLink, and create interface endpoints in every other VPC.",
+        "note": "PrivateLink exposes specific services in one direction. It does not provide general network connectivity between VPCs, and it does not connect the on-premises network to every VPC."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Use AWS Transit Gateway for hub-and-spoke, transitive routing between many VPCs and on-premises networks. VPC peering is one-to-one and non-transitive, which does not scale beyond a handful of VPCs."
+  },
+  {
+    "id": "performant-3.4-11",
+    "domain": "performant",
+    "services": [
+      "Amazon VPC",
+      "AWS Transit Gateway"
+    ],
+    "text": "A company runs a primary database tier in one VPC and an analytics cluster in a second VPC in the same AWS Region and account. The analytics cluster copies several terabytes from the database tier every day and is sensitive to network latency. No other networks need to connect to either VPC, and the CIDR blocks do not overlap.\n\nWhich solution will provide the required connectivity with the LOWEST latency and cost?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Attach both VPCs to a transit gateway, and add routes for each VPC's CIDR block through the transit gateway.",
+        "note": "A transit gateway works, but it adds an extra network hop and charges per attachment hour and per GB processed. Those costs are unnecessary for connecting only two VPCs."
+      },
+      {
+        "id": "b",
+        "text": "Create a VPC peering connection between the two VPCs, and add routes to each VPC's route tables for the other VPC's CIDR block.",
+        "note": "VPC peering connects two VPCs directly over the AWS network with no extra hop, no bandwidth bottleneck and no per-GB processing charge. It is the lowest-latency, lowest-cost option for one pair of VPCs."
+      },
+      {
+        "id": "c",
+        "text": "Create a Site-to-Site VPN between a virtual private gateway in one VPC and a software VPN appliance on Amazon EC2 in the other VPC.",
+        "note": "A VPN adds encryption overhead, tunnel bandwidth limits and an EC2 appliance to manage. Latency and cost are higher than direct peering."
+      },
+      {
+        "id": "d",
+        "text": "Create a Network Load Balancer and a VPC endpoint service in the database VPC, and an interface endpoint in the analytics VPC.",
+        "note": "PrivateLink works for consumer-to-service access, but it adds load balancer and endpoint hourly and per-GB charges and an extra hop, so it is not the lowest-cost option."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "For a small number of VPCs, VPC peering is the lowest-latency and lowest-cost option. Move to a transit gateway when the number of VPCs, transitive routing or on-premises connectivity makes a full mesh unmanageable."
+  },
+  {
+    "id": "performant-3.4-12",
+    "domain": "performant",
+    "services": [
+      "AWS Global Accelerator",
+      "Amazon EC2"
+    ],
+    "text": "A communications company runs a real-time voice conferencing service on thousands of Amazon EC2 instances in private subnets in two AWS Regions. A session broker assigns all participants in a meeting to one specific media instance and UDP port. Participants worldwide report jitter caused by long public internet paths. The company wants participant traffic to enter the AWS global network close to each participant and still reach the exact instance and port that the broker assigned.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an AWS Global Accelerator standard accelerator with a UDP listener and an endpoint group in each Region that contains a Network Load Balancer for the media instances.",
+        "note": "A standard accelerator sends each client to the closest healthy endpoint, and the Network Load Balancer then picks a target. Participants in one meeting could land on different instances, not the one the broker assigned."
+      },
+      {
+        "id": "b",
+        "text": "Create an AWS Global Accelerator custom routing accelerator with the media subnets as endpoints, and have the broker return the mapped accelerator port.",
+        "note": "A custom routing accelerator deterministically maps each listener port on its static IP addresses to one EC2 instance IP address and port in the endpoint subnets. The broker hands out the mapped port, and traffic rides the AWS global network to the assigned instance."
+      },
+      {
+        "id": "c",
+        "text": "Assign an Elastic IP address to each media instance in public subnets, and have the broker return the assigned instance's Elastic IP address and UDP port.",
+        "note": "Participants would reach the exact instance, but their traffic would cross the public internet all the way to the Region, so jitter would not improve."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon CloudFront distribution with the media instances as custom origins, and have the broker return a URL path that identifies the assigned instance.",
+        "note": "CloudFront proxies HTTP-based traffic such as HTTP, HTTPS and WebSocket. It cannot carry real-time UDP media streams to a specific instance and port."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "A Global Accelerator custom routing accelerator lets application logic pin users to a specific EC2 instance and port in VPC subnet endpoints, while traffic still enters the AWS global network at the nearest edge location. A standard accelerator chooses the closest healthy endpoint itself, so it cannot keep a group of users on one chosen instance."
+  },
+  {
+    "id": "performant-3.4-13",
+    "domain": "performant",
+    "services": [
+      "Amazon EC2",
+      "Elastic Network Adapter"
+    ],
+    "text": "A company runs a distributed in-memory caching tier on an older Amazon EC2 instance family in one Availability Zone. The instances were launched from a custom AMI that was built several years ago and does not include the Elastic Network Adapter (ENA) driver. Monitoring shows that the nodes hit a packets-per-second ceiling and that inter-node latency is high and variable, while CPU and memory utilisation stay low. The company wants higher throughput, higher packets per second and lower latency between the nodes.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Relaunch the nodes on the existing instance type in a cluster placement group so that they sit close together on the network.",
+        "note": "A cluster placement group reduces hop count and latency between instances, but the instance type still lacks enhanced networking, so the packets-per-second ceiling remains."
+      },
+      {
+        "id": "b",
+        "text": "Attach two additional elastic network interfaces to each instance, and spread the cache traffic across all of the interfaces.",
+        "note": "Additional network interfaces do not raise an instance type's network performance limits or add enhanced networking, so the packets-per-second bottleneck remains."
+      },
+      {
+        "id": "c",
+        "text": "Install the ENA driver in the AMI and set its ENA support attribute, then relaunch the nodes on a current-generation instance type.",
+        "note": "Enhanced networking with ENA uses SR-IOV to give higher bandwidth, higher packets per second and consistently lower latency. It requires a supported instance type and an AMI with the ENA driver and the enaSupport attribute."
+      },
+      {
+        "id": "d",
+        "text": "Stop each node, change it to a current-generation Nitro-based instance type, and start it again from the existing AMI unchanged.",
+        "note": "Nitro-based instance types use ENA for networking. Without the ENA driver and the enaSupport attribute, the instance cannot use enhanced networking and can become unreachable after the change."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Enhanced networking with ENA (SR-IOV) is how EC2 delivers high bandwidth, high packets per second and low, consistent latency. It needs both a supported instance type and an operating system with the ENA driver and enaSupport enabled. A cluster placement group lowers latency but does not lift a per-instance PPS limit."
+  },
+  {
+    "id": "performant-3.4-14",
+    "domain": "performant",
+    "services": [
+      "AWS Site-to-Site VPN",
+      "AWS Transit Gateway",
+      "AWS Global Accelerator"
+    ],
+    "text": "A company connects 20 branch offices around the world to a VPC in us-east-1 through AWS Site-to-Site VPN connections that terminate on a virtual private gateway. Branches in Asia and South America experience high latency and jitter because their VPN traffic crosses the public internet for long distances. The company needs an improvement within a few weeks and cannot order AWS Direct Connect circuits for these sites.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a transit gateway attached to the VPC, and re-create the VPN connections on the transit gateway with acceleration enabled.",
+        "note": "Accelerated Site-to-Site VPN uses AWS Global Accelerator to carry VPN traffic from the edge location nearest each branch over the AWS global network. Acceleration is supported only for VPN connections on a transit gateway."
+      },
+      {
+        "id": "b",
+        "text": "Enable acceleration on the existing VPN connections that terminate on the virtual private gateway.",
+        "note": "Acceleration cannot be enabled for VPN connections on a virtual private gateway; it is supported only for VPN connections attached to a transit gateway."
+      },
+      {
+        "id": "c",
+        "text": "Replace the site-to-site connections with AWS Client VPN, and install the VPN client on every device in the branches.",
+        "note": "Client VPN still travels over the public internet from each device to the endpoint, so latency and jitter do not improve, and every device needs a client."
+      },
+      {
+        "id": "d",
+        "text": "Create an Amazon CloudFront distribution with the VPC's resources as origins, and route branch traffic through CloudFront.",
+        "note": "CloudFront accelerates HTTP and HTTPS content delivery. It cannot carry general IPsec site-to-site network traffic between branches and a VPC."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Accelerated Site-to-Site VPN routes VPN traffic onto the AWS global network at the nearest edge location, improving performance for distant sites without Direct Connect. It requires the VPN to terminate on a transit gateway, not a virtual private gateway."
+  },
+  {
+    "id": "performant-3.4-15",
+    "domain": "performant",
+    "services": [
+      "Amazon CloudFront",
+      "Amazon S3",
+      "Elastic Load Balancing"
+    ],
+    "text": "A company's web application serves static assets from an Amazon S3 bucket and a personalised JSON API from an Application Load Balancer, both in us-east-1. Users worldwide experience slow page loads. API responses are unique to each user and must never be cached, but the company still wants to reduce API latency for distant users. All traffic must use a single domain name.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Configure an Amazon CloudFront cache behavior for the /api/* path that caches API responses for 1 hour.",
+        "note": "Caching personalised API responses could serve one user's data to another user, and it breaks the requirement never to cache API responses."
+      },
+      {
+        "id": "b",
+        "text": "Create an Amazon CloudFront distribution with the S3 bucket as the default origin, accessed through origin access control, and a cache policy that caches the static assets.",
+        "note": "CloudFront caches static assets at edge locations close to users, so they load quickly, and the distribution provides the single domain name."
+      },
+      {
+        "id": "c",
+        "text": "Create an AWS Global Accelerator accelerator with the S3 bucket as an endpoint for static assets.",
+        "note": "Global Accelerator endpoints are load balancers, EC2 instances and Elastic IP addresses. An S3 bucket cannot be a Global Accelerator endpoint, and the accelerator would not cache the assets."
+      },
+      {
+        "id": "d",
+        "text": "Add a cache behavior for the /api/* path that uses the Application Load Balancer as the origin with a caching-disabled cache policy and an origin request policy that forwards the required headers and cookies.",
+        "note": "With caching disabled, CloudFront still terminates connections at the edge and carries requests over the AWS network to the origin with reused connections, which lowers latency for dynamic, uncacheable content."
+      },
+      {
+        "id": "e",
+        "text": "Create Amazon Route 53 latency-based records for the Application Load Balancer.",
+        "note": "With a single load balancer in one Region, latency-based routing has only one possible answer, so it does not reduce latency for distant users."
+      }
+    ],
+    "correct": [
+      "b",
+      "d"
+    ],
+    "explanation": "One CloudFront distribution can serve both static and dynamic content: cache static paths from S3, and forward dynamic paths to the ALB with caching disabled. Even uncached requests benefit from edge TLS termination and the AWS backbone."
+  },
+  {
+    "id": "performant-3.4-16",
+    "domain": "performant",
+    "services": [
+      "Amazon CloudFront"
+    ],
+    "text": "A sports broadcaster streams live video through Amazon CloudFront from origin servers on Amazon EC2 in eu-west-1. Viewers are spread across six continents. Each new video segment is requested from the origin by many CloudFront regional edge caches at almost the same moment, and the origin servers become overloaded during popular events. The broadcaster wants to reduce the load on the origin without adding origin servers.\n\nWhich solution will meet these requirements?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Increase the TTL for video segments in the CloudFront cache policy from 2 seconds to 1 hour.",
+        "note": "The overload comes from the first request for each new segment arriving from many regional edge caches. A longer TTL does not reduce these first fetches, and an incorrect TTL on live manifests could serve stale content."
+      },
+      {
+        "id": "b",
+        "text": "Enable CloudFront Origin Shield in the AWS Region closest to the origin.",
+        "note": "Origin Shield adds a central caching layer in front of the origin. Requests from all regional edge caches are consolidated there, so the origin receives one request for each new segment instead of one from every regional edge cache."
+      },
+      {
+        "id": "c",
+        "text": "Create a second CloudFront distribution for viewers in Asia and the Americas that uses the same origin.",
+        "note": "A second distribution adds another set of caches that independently request each segment from the origin, which increases origin load."
+      },
+      {
+        "id": "d",
+        "text": "Place an AWS Global Accelerator accelerator in front of the origin servers, and configure CloudFront to use the accelerator as its origin.",
+        "note": "Global Accelerator improves the network path but does not cache content. Every regional edge cache would still send its own request to the origin servers."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Origin Shield is an additional, centralised caching layer that collapses requests from all CloudFront regional edge caches into a single request to the origin. It helps most with live streaming and globally distributed audiences that share content."
+  },
+  {
+    "id": "performant-3.4-17",
+    "domain": "performant",
+    "services": [
+      "AWS Direct Connect",
+      "Direct Connect gateway",
+      "AWS Transit Gateway"
+    ],
+    "text": "A company has 40 VPCs in us-east-1 that are all attached to a transit gateway. The company has a dedicated 10 Gbps AWS Direct Connect connection from its data center. It wants every VPC to reach the data center over Direct Connect, and wants new VPCs that attach to the transit gateway to gain this connectivity without new virtual interfaces.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create a private virtual interface for each VPC on the Direct Connect connection, and attach each one to that VPC's virtual private gateway.",
+        "note": "One private virtual interface per VPC means 40 virtual interfaces to create and manage, and every new VPC needs another one. This breaks the requirement to avoid new virtual interfaces."
+      },
+      {
+        "id": "b",
+        "text": "Create a transit virtual interface on the Direct Connect connection to a Direct Connect gateway.",
+        "note": "A transit virtual interface connects a Direct Connect connection to a Direct Connect gateway that can be associated with transit gateways. One interface serves every VPC behind the transit gateway."
+      },
+      {
+        "id": "c",
+        "text": "Create a public virtual interface on the Direct Connect connection, and route traffic to the VPCs through their public IP addresses.",
+        "note": "A public virtual interface reaches AWS public endpoints, not private VPC address space. Workloads in the VPCs would have to be exposed publicly."
+      },
+      {
+        "id": "d",
+        "text": "Associate the Direct Connect gateway with the transit gateway, and set an allowed prefix that summarises the VPC address range, such as 10.0.0.0/8.",
+        "note": "For a transit gateway association, the Direct Connect gateway advertises only the allowed prefixes to on-premises. A summary prefix covers new VPCs allocated from that range, so they are reachable through the transit gateway route table with no new virtual interfaces."
+      },
+      {
+        "id": "e",
+        "text": "Create a hub VPC with a virtual private gateway attached to the Direct Connect connection, and peer the hub VPC with each of the 40 VPCs.",
+        "note": "VPC peering is not transitive, so on-premises traffic arriving in the hub VPC cannot be routed onward to peered VPCs."
+      }
+    ],
+    "correct": [
+      "b",
+      "d"
+    ],
+    "explanation": "To connect Direct Connect to a transit gateway, use a transit virtual interface to a Direct Connect gateway, then associate the Direct Connect gateway with the transit gateway. Private virtual interfaces connect to individual virtual private gateways and do not scale to many VPCs."
+  }
+]

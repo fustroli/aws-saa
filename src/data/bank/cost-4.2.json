@@ -1,0 +1,664 @@
+[
+  {
+    "id": "cost-4.2-01",
+    "domain": "cost",
+    "services": [
+      "EC2",
+      "Savings Plans",
+      "Fargate"
+    ],
+    "text": "A company runs a steady 24/7 workload on 60 Amazon EC2 m6i instances in us-east-1. The usage will stay constant for at least 3 years. During the next 12 months, the company plans to move part of the workload to eu-west-1 and to migrate several services from EC2 to Amazon ECS on AWS Fargate.\n\nThe company wants to commit to a discount now without having to exchange or resell the commitment later.\n\nWhich purchasing option will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Purchase EC2 Instance Savings Plans for the m6i instance family in us-east-1 with a 3-year term.",
+        "note": "EC2 Instance Savings Plans give the deepest Savings Plans discount but are locked to one instance family in one Region. Usage that moves to eu-west-1 or to Fargate would no longer be covered."
+      },
+      {
+        "id": "b",
+        "text": "Purchase Standard Reserved Instances for m6i instances in us-east-1 with a 3-year term.",
+        "note": "Standard Reserved Instances apply only to EC2 in the purchased Region and cannot cover Fargate. The company would have to sell them on the Reserved Instance Marketplace after the move, which the company wants to avoid."
+      },
+      {
+        "id": "c",
+        "text": "Purchase Compute Savings Plans with a 3-year term for the committed hourly spend.",
+        "note": "Compute Savings Plans apply automatically across instance families, Regions, operating systems, and to Fargate and Lambda usage. The commitment keeps applying after the Region and Fargate moves without any exchange."
+      },
+      {
+        "id": "d",
+        "text": "Purchase Convertible Reserved Instances for m6i instances in us-east-1 with a 3-year term.",
+        "note": "Convertible Reserved Instances can be exchanged for other instance families, but only for EC2 in the same Region. They cannot cover Fargate, and changing them requires manual exchanges."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Compute Savings Plans are the only commitment that follows usage across Regions, instance families, and from EC2 to Fargate or Lambda. EC2 Instance Savings Plans and Reserved Instances give a higher or similar discount but are tied to one Region and to EC2. Remember: Compute Savings Plans trade a slightly smaller discount for the widest flexibility."
+  },
+  {
+    "id": "cost-4.2-02",
+    "domain": "cost",
+    "services": [
+      "EC2",
+      "Savings Plans",
+      "Reserved Instances"
+    ],
+    "text": "A company runs 40 Amazon EC2 instances from the r6i family in a single AWS Region. The instances will run 24/7 for the next 3 years, and the company will stay in this Region and on this instance family. Over the term, the company will resize some instances within the family and will migrate several instances from Windows Server to Linux.\n\nThe company wants the largest discount that will continue to apply automatically after these changes.\n\nWhich purchasing option will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Purchase EC2 Instance Savings Plans for the r6i family in the Region with a 3-year term.",
+        "note": "EC2 Instance Savings Plans apply automatically to any size, operating system, and tenancy within the chosen family and Region, and they give a larger discount than Compute Savings Plans. They meet every stated requirement."
+      },
+      {
+        "id": "b",
+        "text": "Purchase Compute Savings Plans with a 3-year term for the committed hourly spend.",
+        "note": "Compute Savings Plans would cover all the changes, but they give a smaller discount than EC2 Instance Savings Plans. The company does not need cross-family or cross-Region flexibility, so it would pay for flexibility it will not use."
+      },
+      {
+        "id": "c",
+        "text": "Purchase Regional Standard Reserved Instances for r6i Windows instances with a 3-year term.",
+        "note": "Regional Reserved Instances have size flexibility only for Linux/UNIX with default tenancy, and a Standard Reserved Instance cannot change its platform. After the migration to Linux, the Windows reservations would no longer apply."
+      },
+      {
+        "id": "d",
+        "text": "Purchase Zonal Standard Reserved Instances for r6i instances in each Availability Zone with a 3-year term.",
+        "note": "Zonal Reserved Instances are tied to one instance size, platform, and Availability Zone, with no size flexibility. Resizing or changing the operating system would leave the reservations unused."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "When the family and Region are fixed, EC2 Instance Savings Plans give the highest Savings Plans discount and still adjust automatically for size, OS, and tenancy changes. Compute Savings Plans cost more for flexibility that is not needed, and Reserved Instances do not follow an OS change. Match the commitment's flexibility to the changes the scenario actually describes."
+  },
+  {
+    "id": "cost-4.2-03",
+    "domain": "cost",
+    "services": [
+      "EC2",
+      "EC2 Auto Scaling",
+      "Spot Instances"
+    ],
+    "text": "A company runs a nightly genomics batch workload that processes 20,000 independent samples. Each sample takes about 8 minutes on 4 vCPUs. The application writes results for each sample to Amazon S3 when it completes, and a failed sample can be retried. The full batch must finish by 6:00 AM, but the start time is flexible.\n\nThe workload runs well on any current-generation compute optimized or general purpose instance.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an Auto Scaling group that uses Spot Instances of a single instance type, c6i.xlarge, in one Availability Zone with the lowest-price allocation strategy.",
+        "note": "Spot Instances are the cheapest fit for retryable work, but a single instance type in one Availability Zone is one capacity pool. A capacity shortage or wave of interruptions in that pool could stop the batch and miss the 6:00 AM deadline."
+      },
+      {
+        "id": "b",
+        "text": "Create an Auto Scaling group of On-Demand c6i.xlarge Instances in multiple Availability Zones. Purchase a 1-year Compute Savings Plan that covers the group's peak usage.",
+        "note": "On-Demand capacity is reliable, but a Savings Plan sized for the nightly peak is billed every hour of the day, and the discounted rate is still far higher than Spot for retryable batch work."
+      },
+      {
+        "id": "c",
+        "text": "Run the workload on Dedicated Instances in an Auto Scaling group that scales on the number of remaining samples.",
+        "note": "Dedicated Instances run on single-tenant hardware and add a per-Region dedicated fee. Nothing in the scenario requires hardware isolation, so this adds cost without any benefit."
+      },
+      {
+        "id": "d",
+        "text": "Use a mixed instances policy with Spot Instances across c6i, c7i, m6i, and m7i sizes in multiple Availability Zones and the price-capacity-optimized strategy.",
+        "note": "Diversifying across many instance types and Availability Zones gives Spot access to many capacity pools, and price-capacity-optimized picks pools that are both cheap and unlikely to be interrupted. Retryable per-sample work tolerates the occasional interruption."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Short, retryable batch tasks are the textbook Spot workload. The key to meeting a deadline on Spot is diversification across instance types and Availability Zones with an allocation strategy that weighs capacity. A single Spot pool is cheaper on paper but is the design that fails under interruptions."
+  },
+  {
+    "id": "cost-4.2-04",
+    "domain": "cost",
+    "services": [
+      "EC2 Auto Scaling",
+      "Spot Instances",
+      "Savings Plans"
+    ],
+    "text": "A company runs a stateless web application on Amazon EC2 instances in an Auto Scaling group behind an Application Load Balancer. At least 6 instances are needed at all times to serve the minimum traffic level, and that minimum must never be interrupted. During business hours, the group scales up to 30 instances. The application can tolerate the loss of any instance above the minimum because the load balancer redistributes requests.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Purchase a Compute Savings Plan for all 30 instances. Use only On-Demand Instances in the Auto Scaling group.",
+        "note": "A Savings Plan sized for 30 instances is paid for every hour, but 24 of those instances run only during business hours. The commitment would be wasted for most of the day."
+      },
+      {
+        "id": "b",
+        "text": "Configure a mixed instances policy with an On-Demand base capacity of 6 and 0% On-Demand above the base. Purchase a Savings Plan that covers the 6 base instances.",
+        "note": "The 6 always-on instances are On-Demand and discounted by the Savings Plan, so the required minimum is never interrupted. Capacity above the base uses Spot, which suits interruption-tolerant scale-out capacity."
+      },
+      {
+        "id": "c",
+        "text": "Configure a mixed instances policy that uses Spot Instances for all capacity, including the minimum of 6 instances, across multiple instance types.",
+        "note": "Using Spot for every instance is the cheapest option, but the 6 base instances could be interrupted. That breaks the requirement that the minimum capacity must never be interrupted."
+      },
+      {
+        "id": "d",
+        "text": "Configure a mixed instances policy with an On-Demand base capacity of 6 and 100% On-Demand above the base. Purchase a Savings Plan that covers the 6 base instances.",
+        "note": "This design protects the base capacity, but scale-out capacity stays On-Demand. Spot would cover the interruption-tolerant extra capacity at a much lower price."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "A mixed instances policy separates the always-needed base, which gets On-Demand plus a commitment discount, from the elastic top, which gets Spot. Buy commitments only for the baseline that runs all the time, never for peak capacity. Options c and d differ from b only in how the base and the scale-out capacity are purchased."
+  },
+  {
+    "id": "cost-4.2-05",
+    "domain": "cost",
+    "services": [
+      "EC2 Auto Scaling",
+      "Spot Instances"
+    ],
+    "text": "A company runs a fleet of stateless queue workers on Spot Instances in an Auto Scaling group that uses several instance types. When a Spot Instance is interrupted, the group launches a replacement only after the instance is terminated, so throughput drops for several minutes. Each worker needs about 90 seconds to finish its current message and stop cleanly.\n\nThe company wants to reduce the impact of interruptions without moving to On-Demand Instances.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Install a script on each instance that polls the instance metadata service every 5 seconds for an interruption notice and then launches a replacement instance by calling the EC2 API.",
+        "note": "Polling the metadata service does detect the 2-minute interruption notice. However, the company would have to build, deploy, and maintain custom replacement logic that Auto Scaling already provides."
+      },
+      {
+        "id": "b",
+        "text": "Create an Amazon CloudWatch alarm on the CPUUtilization metric of the group. Add a step scaling policy that adds instances when CPU drops below 10%.",
+        "note": "Low CPU does not reliably indicate a Spot interruption, and the alarm would react only after capacity is lost. This approach does not launch replacements before interruptions happen."
+      },
+      {
+        "id": "c",
+        "text": "Enable Capacity Rebalancing on the Auto Scaling group. Add a termination lifecycle hook so that each worker can finish its current message before the instance is terminated.",
+        "note": "Capacity Rebalancing launches a replacement Spot Instance when EC2 signals an elevated interruption risk, often before the 2-minute notice. The lifecycle hook gives each worker time to finish cleanly. Both are managed Auto Scaling features."
+      },
+      {
+        "id": "d",
+        "text": "Increase the group's desired capacity by 30% so that spare Spot Instances absorb interruptions.",
+        "note": "Permanent over-provisioning absorbs some interruptions but pays for 30% extra capacity all the time. It also does not let workers finish their messages cleanly."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "Capacity Rebalancing reacts to the EC2 rebalance recommendation and launches a replacement proactively, and a lifecycle hook gives in-flight work time to drain. Custom metadata polling works but is undifferentiated operational work. Know the managed Spot features of Auto Scaling: mixed instances policy, allocation strategies, and Capacity Rebalancing."
+  },
+  {
+    "id": "cost-4.2-06",
+    "domain": "cost",
+    "services": [
+      "EC2",
+      "Dedicated Hosts",
+      "License Manager"
+    ],
+    "text": "A company is migrating 25 Windows Server virtual machines that run Microsoft SQL Server to Amazon EC2. The company already owns SQL Server licenses that are licensed per physical core and are not covered by License Mobility. The company wants to bring these licenses to AWS and must be able to report the physical cores and sockets that the licenses are used on.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Launch the instances on Dedicated Instances. Use AWS License Manager to track license usage.",
+        "note": "Dedicated Instances run on single-tenant hardware, but they do not expose the physical sockets and cores or give placement control on a specific host. They do not support the per-core bring-your-own-license model that requires host-level visibility."
+      },
+      {
+        "id": "b",
+        "text": "Launch the instances with default tenancy by using license-included SQL Server AMIs. Purchase a Compute Savings Plan.",
+        "note": "License-included AMIs bundle the SQL Server license into the hourly price. The company would pay again for licenses it already owns."
+      },
+      {
+        "id": "c",
+        "text": "Launch the instances with default tenancy by using Windows Server AMIs. Install SQL Server with the company's existing licenses.",
+        "note": "Shared-tenancy instances can run on any physical server, so the company cannot see or control the sockets and cores. Licenses without License Mobility cannot be used on shared tenancy."
+      },
+      {
+        "id": "d",
+        "text": "Allocate EC2 Dedicated Hosts and launch the instances on them. Use AWS License Manager to track the cores and sockets that the licenses use.",
+        "note": "Dedicated Hosts give visibility into the physical sockets and cores and keep instances on the same physical server. This is the option that supports per-core and per-socket bring-your-own-license software."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Per-socket or per-core licenses brought to AWS need Dedicated Hosts, which expose the physical hardware and support host affinity. Dedicated Instances are single-tenant too, but they do not give host-level visibility. This Dedicated Hosts versus Dedicated Instances split is a frequent exam close pair."
+  },
+  {
+    "id": "cost-4.2-07",
+    "domain": "cost",
+    "services": [
+      "EC2",
+      "Dedicated Instances",
+      "Dedicated Hosts"
+    ],
+    "text": "A healthcare company must run 8 Amazon EC2 instances on hardware that is not shared with other AWS customers. The instances use five different instance types across the c6i, m6i, and r6i families. The application uses only Linux and open-source software, so there are no per-socket or per-core license requirements. The company does not need control over instance placement on specific servers.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Launch the instances as Dedicated Instances.",
+        "note": "Dedicated Instances run on hardware dedicated to a single customer. The company pays per instance plus a flat per-Region dedicated fee, not for entire hosts, which suits a small number of mixed instance types."
+      },
+      {
+        "id": "b",
+        "text": "Allocate EC2 Dedicated Hosts for each instance family and launch the instances on them.",
+        "note": "Dedicated Hosts also give single-tenant hardware, but the company pays for each entire host regardless of how many instances run on it. With 8 instances across three families, at least three hosts would be mostly idle. Host-level control is not required."
+      },
+      {
+        "id": "c",
+        "text": "Launch the instances with default tenancy and purchase EC2 Instance Savings Plans.",
+        "note": "Savings Plans reduce cost, but default tenancy places instances on shared hardware. This breaks the requirement that hardware is not shared with other customers."
+      },
+      {
+        "id": "d",
+        "text": "Launch the instances with default tenancy in a cluster placement group.",
+        "note": "A cluster placement group places instances close together for network performance. It does not provide single-tenant hardware."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "When the only need is hardware isolation, Dedicated Instances are the cheaper single-tenant option because they are billed per instance (plus a flat per-Region fee) rather than per host. Dedicated Hosts are justified by bring-your-own-license software or a need for host-level visibility and placement control. Placement groups and Savings Plans do not change tenancy."
+  },
+  {
+    "id": "cost-4.2-08",
+    "domain": "cost",
+    "services": [
+      "Compute Optimizer",
+      "EC2",
+      "EBS",
+      "Lambda"
+    ],
+    "text": "A company has 300 Amazon EC2 instances, 900 Amazon EBS volumes, and 150 AWS Lambda functions across 12 AWS accounts in AWS Organizations. The company suspects that many of these resources are overprovisioned. Memory use on the EC2 instances must be considered in any recommendation.\n\nA solutions architect needs to produce right-sizing recommendations for all three resource types across all accounts.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Enable rightsizing recommendations in AWS Cost Explorer from the management account. Install the Amazon CloudWatch agent on the EC2 instances to publish memory metrics.",
+        "note": "Cost Explorer rightsizing recommendations cover EC2 instances only. They do not produce recommendations for EBS volumes or Lambda function memory."
+      },
+      {
+        "id": "b",
+        "text": "Opt in to AWS Compute Optimizer for all accounts in the organization from the management account. Install the Amazon CloudWatch agent on the EC2 instances to publish memory metrics.",
+        "note": "Compute Optimizer produces right-sizing recommendations for EC2 instances, EBS volumes, and Lambda functions across an organization. Memory utilization is included in EC2 recommendations when the CloudWatch agent publishes it."
+      },
+      {
+        "id": "c",
+        "text": "Install the Amazon CloudWatch agent on the EC2 instances. Build CloudWatch dashboards for each account and review the utilization metrics monthly to choose new sizes.",
+        "note": "Dashboards show utilization, but engineers would have to analyze 1,350 resources manually and decide on new sizes. This is far more operational effort than a managed recommendation service."
+      },
+      {
+        "id": "d",
+        "text": "Create AWS Budgets for each account with alerts at 80% of the expected spend. Resize resources in accounts whose alerts fire.",
+        "note": "AWS Budgets tracks spend against a threshold. It does not identify which resources are overprovisioned or what size they should be."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "AWS Compute Optimizer covers EC2, Auto Scaling groups, EBS, Lambda, and more, and it can run organization-wide. EC2 memory data requires the CloudWatch agent with either tool. The distinction to remember is scope: Cost Explorer rightsizing is EC2-only, Compute Optimizer covers several compute resource types."
+  },
+  {
+    "id": "cost-4.2-09",
+    "domain": "cost",
+    "services": [
+      "EC2",
+      "Graviton",
+      "EC2 Auto Scaling"
+    ],
+    "text": "A company runs a Java web service on 50 m6i.xlarge Linux instances in an Auto Scaling group. CPU utilization is steady at around 60% at all times. The application is packaged as a JAR file with no native x86 dependencies. The service must not be interrupted, and the company does not want to make a long-term commitment because it may retire the service in 6 months.\n\nWhich solution will reduce compute costs the MOST?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Change the launch template to use t3.xlarge burstable instances in unlimited mode.",
+        "note": "Steady 60% CPU is well above the t3.xlarge baseline, so unlimited mode would charge for surplus CPU credits continuously. Burstable instances suit low average utilization with occasional spikes."
+      },
+      {
+        "id": "b",
+        "text": "Change the Auto Scaling group to use Spot Instances across several general purpose instance types.",
+        "note": "Spot Instances give the largest discount, but they can be interrupted. This breaks the requirement that the service must not be interrupted."
+      },
+      {
+        "id": "c",
+        "text": "Purchase a 1-year Compute Savings Plan that covers the current hourly usage.",
+        "note": "A Savings Plan would lower the hourly rate, but the 1-year commitment outlasts the 6-month expected life of the service. The company does not want a long-term commitment."
+      },
+      {
+        "id": "d",
+        "text": "Change the launch template to use m7g.xlarge instances, which use AWS Graviton processors, and redeploy the JAR file.",
+        "note": "Graviton-based instances give better price performance than comparable x86 instances. Java bytecode runs on Arm64 without code changes, and On-Demand Graviton instances need no commitment and are not interrupted."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Graviton instances lower cost per unit of performance with no commitment, and interpreted or JVM workloads usually move without code changes. Spot fails the no-interruption requirement, a Savings Plan fails the no-commitment requirement, and burstable instances are wrong for sustained CPU. Graviton is the default right answer for portable Linux workloads seeking cheaper compute."
+  },
+  {
+    "id": "cost-4.2-10",
+    "domain": "cost",
+    "services": [
+      "Lambda",
+      "S3",
+      "Fargate",
+      "EC2"
+    ],
+    "text": "A company stores product photos in an Amazon S3 bucket. Each time a photo is uploaded, the company generates three thumbnail sizes. Uploads arrive at unpredictable times, about 2,000 per day, and each thumbnail job takes about 20 seconds with 1 GB of memory. Today a t3.large instance runs 24/7 and polls the bucket for new objects.\n\nThe company wants to stop managing servers and to pay as little as possible while the system is idle.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Create an AWS Lambda function for the thumbnails and invoke it with S3 event notifications for new objects.",
+        "note": "Lambda is billed only for the duration of each invocation, so there is no cost while no photos arrive. A 20-second job with 1 GB of memory fits easily inside Lambda limits, and S3 event notifications remove the polling."
+      },
+      {
+        "id": "b",
+        "text": "Run the thumbnail code as an Amazon ECS service on AWS Fargate with a desired count of one task that polls the bucket.",
+        "note": "Fargate removes server management, but a service with one task runs and is billed 24/7, including idle periods. The company would still pay for idle capacity."
+      },
+      {
+        "id": "c",
+        "text": "Replace the t3.large instance with a Spot Instance in an Auto Scaling group with a desired capacity of one.",
+        "note": "A Spot Instance is cheaper than On-Demand, but the company would still manage an EC2 instance and pay for it while it is idle. This breaks the requirement to stop managing servers."
+      },
+      {
+        "id": "d",
+        "text": "Deploy the Instance Scheduler on AWS solution to stop the t3.large instance outside business hours.",
+        "note": "Uploads arrive at unpredictable times, so stopping the instance on a schedule would leave photos unprocessed. The company would also still manage the instance."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "For short, event-driven, intermittent work, Lambda is usually the cheapest compute because it scales to zero and bills per millisecond. An always-on Fargate task or EC2 instance pays for idle time. Check the Lambda fit first: under 15 minutes and up to 10 GB of memory."
+  },
+  {
+    "id": "cost-4.2-11",
+    "domain": "cost",
+    "services": [
+      "ECS",
+      "Fargate",
+      "EventBridge",
+      "Lambda"
+    ],
+    "text": "A company has a containerized data export job that runs once every night and takes about 2 hours. The job is idempotent: if it stops, it can be restarted from the beginning, and it only needs to finish within an 8-hour overnight window. The company does not want to manage servers or clusters of instances.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Package the job as an AWS Lambda container image. Use an Amazon EventBridge schedule to invoke the function each night.",
+        "note": "Lambda runs container images without servers, but a single invocation can run for at most 15 minutes. A 2-hour job cannot run as one Lambda function."
+      },
+      {
+        "id": "b",
+        "text": "Run the job as an Amazon ECS task on Amazon EC2 instances covered by Reserved Instances. Use an Amazon EventBridge schedule to start the task each night.",
+        "note": "The company would manage the EC2 container instances, and Reserved Instances are billed 24/7 for a job that runs 2 hours a day. This breaks the no-servers requirement and wastes most of the commitment."
+      },
+      {
+        "id": "c",
+        "text": "Use an Amazon EventBridge schedule to run the job as an Amazon ECS task with the FARGATE_SPOT capacity provider. Retry the task if it is interrupted.",
+        "note": "Fargate Spot runs tasks without servers at a large discount compared to Fargate, and billing stops when the task ends. An idempotent job with a 6-hour buffer can absorb an occasional interruption and retry."
+      },
+      {
+        "id": "d",
+        "text": "Use an Amazon EventBridge schedule to run the job as an Amazon ECS task with the FARGATE capacity provider.",
+        "note": "Standard Fargate meets every functional requirement, but it costs more than Fargate Spot. The restartable job and generous window mean the interruption protection of On-Demand Fargate is not needed."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "A long, restartable container job with no server management points to Fargate, and its tolerance for interruption points to Fargate Spot. Lambda fails on the 15-minute limit, and EC2 with Reserved Instances fails both the no-servers requirement and the cost. Options c and d differ only in the capacity provider."
+  },
+  {
+    "id": "cost-4.2-12",
+    "domain": "cost",
+    "services": [
+      "Instance Scheduler on AWS",
+      "EC2",
+      "RDS"
+    ],
+    "text": "A company has 40 standalone Amazon EC2 instances and 10 Amazon RDS DB instances in its development and test accounts. The resources are used only from 8:00 AM to 6:00 PM on weekdays, and they run 24/7 today. The EC2 instances are not part of Auto Scaling groups.\n\nThe company wants to stop paying for these resources outside working hours and wants a single tag-based mechanism to manage the schedule for both resource types.\n\nWhich solution will meet these requirements with the LEAST operational overhead?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Purchase 1-year Reserved Instances for the EC2 instances and reserved DB instances for the RDS instances.",
+        "note": "Reservations lower the hourly rate but are billed every hour of the term. The resources are needed for about 50 of 168 hours each week, so stopping them saves more than any reservation."
+      },
+      {
+        "id": "b",
+        "text": "Deploy the Instance Scheduler on AWS solution. Define a weekday 8:00 AM to 6:00 PM schedule and tag the EC2 and RDS instances with the schedule name.",
+        "note": "Instance Scheduler on AWS starts and stops EC2 and RDS instances based on tags and defined schedules. It covers both resource types with one mechanism and no custom code."
+      },
+      {
+        "id": "c",
+        "text": "Place the EC2 instances in Auto Scaling groups. Create scheduled actions that set the desired capacity to zero outside working hours.",
+        "note": "Scheduled scaling can remove EC2 capacity overnight, but it requires rebuilding standalone instances into Auto Scaling groups. It also does nothing for the RDS DB instances."
+      },
+      {
+        "id": "d",
+        "text": "Purchase a Compute Savings Plan that covers the development and test EC2 usage.",
+        "note": "A Savings Plan commits to hourly spend for every hour of the term and does not apply to RDS. It is designed for steady usage, not resources that can be stopped most of the week."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Non-production resources with fixed working hours are cheapest when they are stopped outside those hours. Instance Scheduler on AWS does this for EC2 and RDS with tags. Commitments such as Reserved Instances or Savings Plans suit steady 24/7 usage, not part-time usage."
+  },
+  {
+    "id": "cost-4.2-13",
+    "domain": "cost",
+    "services": [
+      "Savings Plans",
+      "Spot Instances",
+      "EC2"
+    ],
+    "text": "A company runs an analytics platform on Amazon EC2. A core of 12 instances runs 24/7 and will continue for at least 3 years, but the company plans to move these instances to AWS Graviton instance types next year. Every night, the platform also adds 80 instances for 3 hours to run a distributed job. The nightly job writes checkpoints to Amazon S3 and resumes from them if a node is lost.\n\nWhich combination of purchasing options will meet these requirements MOST cost-effectively? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Purchase a 3-year Compute Savings Plan that covers the hourly cost of the 12 core instances.",
+        "note": "Compute Savings Plans discount steady usage and keep applying when instances change family, including a move to Graviton. This fits the 24/7 core."
+      },
+      {
+        "id": "b",
+        "text": "Purchase 3-year Standard Reserved Instances for the current instance type of the 12 core instances.",
+        "note": "Standard Reserved Instances cannot be exchanged for a different instance family. After the move to Graviton, the reservations would no longer apply."
+      },
+      {
+        "id": "c",
+        "text": "Run the 80 nightly instances as Spot Instances across multiple instance types.",
+        "note": "The nightly job checkpoints to S3 and tolerates lost nodes, which makes it a good fit for Spot pricing. Diversifying instance types improves the chance of getting capacity."
+      },
+      {
+        "id": "d",
+        "text": "Create On-Demand Capacity Reservations for the 80 nightly instances.",
+        "note": "Capacity Reservations guarantee capacity at On-Demand prices and are billed whether or not instances run. They add cost for capacity that the fault-tolerant job does not need guaranteed."
+      },
+      {
+        "id": "e",
+        "text": "Run the 80 nightly instances on Dedicated Hosts.",
+        "note": "Dedicated Hosts are for licensing or compliance needs and are billed for the whole host. Nothing in the scenario requires them, and they cost more than Spot."
+      }
+    ],
+    "correct": [
+      "a",
+      "c"
+    ],
+    "explanation": "Split the workload by usage pattern: commit only to the steady baseline, and use Spot for interruptible bursts. The planned move to Graviton rules out Standard Reserved Instances and points to Compute Savings Plans. Checkpointing is the signal that Spot is safe."
+  },
+  {
+    "id": "cost-4.2-14",
+    "domain": "cost",
+    "services": [
+      "Lambda",
+      "Graviton",
+      "Savings Plans"
+    ],
+    "text": "A company runs 20 AWS Lambda functions written in Python. The functions process about 400 million invocations each month, and Lambda is now one of the company's largest costs. The functions use only pure-Python libraries with no compiled x86 binaries. The company does not want to make any spending commitment because it is reorganizing its accounts, and it wants to avoid changing application code.\n\nWhich solution will reduce Lambda costs the MOST?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Change the instruction set architecture of the functions from x86_64 to arm64.",
+        "note": "Lambda functions on arm64 use AWS Graviton processors and are billed at a lower price per GB-second than x86_64, often with better performance. Pure-Python code runs unchanged, and there is no commitment."
+      },
+      {
+        "id": "b",
+        "text": "Purchase a 1-year Compute Savings Plan that covers the Lambda usage.",
+        "note": "Compute Savings Plans do apply to Lambda duration charges, but they require a 1-year or 3-year spending commitment. The company does not want to make a commitment."
+      },
+      {
+        "id": "c",
+        "text": "Migrate the functions to Python applications that run on Amazon EC2 instances in an Auto Scaling group.",
+        "note": "Moving to EC2 requires rewriting the event handling and managing servers. This breaks the requirement to avoid code changes."
+      },
+      {
+        "id": "d",
+        "text": "Double the memory setting of each function so that each invocation finishes faster.",
+        "note": "Doubling memory doubles the price per millisecond. It reduces cost only if duration falls by more than half, and the scenario gives no evidence that it will."
+      }
+    ],
+    "correct": [
+      "a"
+    ],
+    "explanation": "Switching Lambda to arm64 is a configuration change that lowers the GB-second price with no commitment, provided the code and dependencies are architecture-neutral. Savings Plans also cut Lambda cost but need a commitment. Graviton applies to Lambda and Fargate as well as to EC2."
+  },
+  {
+    "id": "cost-4.2-15",
+    "domain": "cost",
+    "services": [
+      "EC2",
+      "Compute Optimizer"
+    ],
+    "text": "A company runs an internal reporting application on a single m5.xlarge instance (4 vCPUs, 16 GiB of memory). The application must run continuously and must not be interrupted. Over the past 3 months, average CPU utilization was 6%, with short spikes to 35% a few times a day. Memory use never exceeded 5 GiB.\n\nWhich instance type change will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Change to an m5.large On-Demand Instance (2 vCPUs, 8 GiB of memory).",
+        "note": "An m5.large is correctly sized for the memory and peak CPU, but fixed-performance instances charge for full CPU capacity at all times. A burstable instance of the same size costs less for 6% average use."
+      },
+      {
+        "id": "b",
+        "text": "Change to an r5.large On-Demand Instance (2 vCPUs, 16 GiB of memory).",
+        "note": "Memory optimized instances cost more per vCPU and provide memory that the application does not use. Memory use never exceeded 5 GiB."
+      },
+      {
+        "id": "c",
+        "text": "Change to an m5.large Spot Instance (2 vCPUs, 8 GiB of memory).",
+        "note": "Spot pricing is the lowest, but a Spot Instance can be interrupted. This breaks the requirement that the application must run continuously without interruption."
+      },
+      {
+        "id": "d",
+        "text": "Change to a t3.large On-Demand Instance (2 vCPUs, 8 GiB of memory).",
+        "note": "Burstable instances suit low average CPU with occasional spikes and cost less than fixed-performance instances of the same size. The 6% average is well below the t3.large baseline, so the instance earns CPU credits that cover the short spikes without surplus charges."
+      }
+    ],
+    "correct": [
+      "d"
+    ],
+    "explanation": "Right-sizing has two parts: the smallest size that fits peak memory and CPU, and the cheapest family for the usage profile. Low average CPU with brief spikes is the burstable profile. The m5.large is a correct size in a more expensive family, so it is the near miss."
+  },
+  {
+    "id": "cost-4.2-16",
+    "domain": "cost",
+    "services": [
+      "Fargate",
+      "ECS",
+      "Savings Plans"
+    ],
+    "text": "A company runs 30 microservices as Amazon ECS services on AWS Fargate. The services run 24/7 with a steady number of tasks, and the company expects this usage to continue for at least 3 years. The services handle customer payments, so tasks must not be interrupted.\n\nWhich solution will reduce compute costs the MOST?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Purchase a 3-year EC2 Instance Savings Plan that matches the hourly Fargate spend.",
+        "note": "EC2 Instance Savings Plans apply only to EC2 instance usage in one instance family and Region. They do not apply to Fargate."
+      },
+      {
+        "id": "b",
+        "text": "Purchase a 3-year Compute Savings Plan that matches the hourly Fargate spend.",
+        "note": "Compute Savings Plans apply to Fargate, Lambda, and EC2 usage. A 3-year term gives the largest discount for steady, long-running tasks without any risk of interruption."
+      },
+      {
+        "id": "c",
+        "text": "Purchase 3-year Standard Reserved Instances for the vCPU and memory that the tasks use.",
+        "note": "Reserved Instances apply to EC2 instances, not Fargate tasks. Fargate usage cannot be covered by Reserved Instances."
+      },
+      {
+        "id": "d",
+        "text": "Change the services to use the FARGATE_SPOT capacity provider for all tasks.",
+        "note": "Fargate Spot is cheaper, but tasks can be interrupted with a 2-minute warning. This breaks the requirement that payment tasks must not be interrupted."
+      }
+    ],
+    "correct": [
+      "b"
+    ],
+    "explanation": "Compute Savings Plans are the only commitment-based discount for Fargate. EC2 Instance Savings Plans and Reserved Instances apply only to EC2 instances. For steady, interruption-sensitive serverless containers, a Compute Savings Plan is the answer."
+  },
+  {
+    "id": "cost-4.2-17",
+    "domain": "cost",
+    "services": [
+      "EC2",
+      "On-Demand Capacity Reservations",
+      "Reserved Instances"
+    ],
+    "text": "A retailer expects a large traffic surge during a 10-day sales event next month. The company must be certain that 200 c6i.4xlarge instances will be available in a specific Availability Zone for the whole event. After the event, the company will need only its normal 20 instances, which are already covered by a Savings Plan.\n\nWhich solution will meet these requirements MOST cost-effectively?",
+    "options": [
+      {
+        "id": "a",
+        "text": "Purchase 180 zonal Reserved Instances for c6i.4xlarge in the Availability Zone with a 1-year term.",
+        "note": "Zonal Reserved Instances do reserve capacity, but they commit the company to paying for 180 instances for a full year. The capacity is needed for only 10 days."
+      },
+      {
+        "id": "b",
+        "text": "Increase the Savings Plan commitment to cover 200 c6i.4xlarge instances.",
+        "note": "Savings Plans provide a billing discount only. They do not reserve capacity in any Availability Zone, and the larger commitment would last for the full term."
+      },
+      {
+        "id": "c",
+        "text": "Create On-Demand Capacity Reservations for 180 c6i.4xlarge instances in the Availability Zone, and cancel them after the event.",
+        "note": "On-Demand Capacity Reservations guarantee capacity in a specific Availability Zone with no long-term commitment. The company pays only while the reservations are active and can cancel them after the event."
+      },
+      {
+        "id": "d",
+        "text": "Launch the additional 180 instances as Spot Instances in the Availability Zone with the capacity-optimized allocation strategy and Capacity Rebalancing enabled.",
+        "note": "Capacity-optimized allocation and Capacity Rebalancing lower the chance and impact of interruptions, but Spot capacity is never guaranteed. This breaks the requirement to be certain that the instances will be available."
+      }
+    ],
+    "correct": [
+      "c"
+    ],
+    "explanation": "On-Demand Capacity Reservations are the tool for guaranteed capacity in an Availability Zone for a short, known period. Zonal Reserved Instances also reserve capacity but require a 1-year or 3-year term. Savings Plans give a discount but never reserve capacity."
+  },
+  {
+    "id": "cost-4.2-18",
+    "domain": "cost",
+    "services": [
+      "Spot Instances",
+      "EventBridge",
+      "S3",
+      "EC2 Auto Scaling"
+    ],
+    "text": "A visual effects studio renders frames on Spot Instances. Each frame takes about 45 minutes, and today all instances are c6i.8xlarge in a single Availability Zone. When an instance is interrupted, all work on the current frame is lost and the frame starts again. Interruptions have recently delayed deliveries.\n\nThe studio wants to keep using Spot pricing and finish frames reliably.\n\nWhich combination of steps will meet these requirements? (Choose TWO.)",
+    "options": [
+      {
+        "id": "a",
+        "text": "Set the maximum Spot price to the On-Demand price so that the instances are not interrupted.",
+        "note": "Spot interruptions are driven mainly by EC2 needing the capacity back, not by price. Setting a maximum price does not prevent interruptions."
+      },
+      {
+        "id": "b",
+        "text": "Configure the Auto Scaling group to use several instance types of similar size across multiple Availability Zones with the price-capacity-optimized allocation strategy.",
+        "note": "Diversifying across instance types and Availability Zones draws from more Spot capacity pools, and price-capacity-optimized favors pools with low interruption risk. This reduces how often frames are interrupted."
+      },
+      {
+        "id": "c",
+        "text": "Move all rendering to On-Demand Instances in a cluster placement group.",
+        "note": "On-Demand Instances are not interrupted, but the studio wants to keep Spot pricing. This option drops the Spot discount."
+      },
+      {
+        "id": "d",
+        "text": "Pin all instances to one instance type so that the render time per frame is consistent.",
+        "note": "A single instance type keeps the workload in fewer capacity pools, which raises the chance of interruption and capacity shortages. This works against reliability."
+      },
+      {
+        "id": "e",
+        "text": "Change the renderer to write progress checkpoints to Amazon S3. Use an Amazon EventBridge rule for EC2 Spot Instance interruption warnings to trigger a final checkpoint, and resume frames from the latest checkpoint.",
+        "note": "Checkpointing lets an interrupted frame resume instead of restarting from zero. The 2-minute interruption warning, delivered through EventBridge, gives time to save state."
+      }
+    ],
+    "correct": [
+      "b",
+      "e"
+    ],
+    "explanation": "Reliable Spot workloads use two techniques: reduce interruptions by diversifying capacity pools, and reduce the cost of each interruption by checkpointing and handling the 2-minute warning. A maximum price does not prevent capacity-driven interruptions, and On-Demand gives up the Spot discount."
+  }
+]
