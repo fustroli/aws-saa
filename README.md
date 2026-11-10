@@ -27,11 +27,14 @@ text, and save it at that path.
 ## Architecture
 
 ```
-browser ──HTTPS──> CloudFront ──OAC──> S3 site bucket (private)
-                        └── /api/* ──OAC──> Lambda function URL (AWS_IAM) ──> S3 progress bucket (private)
+browser ──HTTPS──> CloudFront + WAF ──OAC──> S3 site bucket (private)
+                              └── /api/* ──OAC──> Lambda function URL (AWS_IAM) ──> S3 progress bucket (private)
 ```
 
-- `infra/template.yaml`: the whole stack, plain CloudFormation.
+- `infra/template.yaml`: the whole stack, plain CloudFormation. CloudFront and its
+  AWS WAF web ACL are on the CloudFront flat-rate Free plan ($0, no overage
+  charges). WAF blocks any IP that sends more than `ApiRateLimit` (default 300)
+  `/api/*` requests in 5 minutes, which caps what a bot can cost in Lambda/S3.
 - `infra/lambda/`: sync API. `GET /api/progress/{id}` loads, `PUT` merges and saves
   to `progress/{id}.json`, using S3 conditional writes (`If-Match`) so concurrent
   saves don't overwrite each other.
@@ -44,10 +47,12 @@ change that progress.
 
 ## Deploy
 
-Needs AWS CLI v2 with credentials (`aws login` / `aws sso login`).
+Needs AWS CLI v2 with credentials (`aws login` / `aws sso login`). The stack
+always deploys to `us-east-1`, the only Region with CloudFront-scope WAF web ACLs.
+The flat-rate plan isn't available to accounts on the AWS Free Tier plan.
 
 ```sh
-AWS_REGION=eu-central-1 npm run deploy
+npm run deploy
 ```
 
 The script runs the tests, builds the site and Lambda, creates an artifact bucket
@@ -56,8 +61,8 @@ package` + `deploy`, uploads `dist/` to the site bucket and invalidates
 `index.html`. The first deploy takes a few minutes (CloudFront). It prints the site URL.
 
 Options: `STACK_NAME` (default `aws-saa`), `ARTIFACT_BUCKET`. The template
-parameters `PriceClass` and `ReservedConcurrency` can be changed in the
+parameters `PriceClass`, `ReservedConcurrency` and `ApiRateLimit` can be changed in the
 CloudFormation console; later deploys keep the values you set.
 
-To delete: empty the site bucket, then delete the stack. The progress bucket is
+To delete: empty the site bucket, then delete the stack (this cancels the Free plan). The progress bucket is
 retained on purpose (user data); delete it by hand if you want it gone.
