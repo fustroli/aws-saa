@@ -586,6 +586,19 @@ button.link:hover {
   margin: 6px 0 0;
 }
 
+.feedback-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+button.small {
+  padding: 4px 10px;
+  font-size: 0.85rem;
+}
+
 .feedback.ok {
   background: var(--ok-bg);
   border-color: var(--ok);

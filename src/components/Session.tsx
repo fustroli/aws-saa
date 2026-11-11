@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { DOMAINS } from '../types'
 import type { Attempt, Question } from '../types'
 import { isCorrect, isMultiSelect } from '../lib/quiz'
+import { buildStudyPrompt } from '../lib/studyPrompt'
 
 export interface SessionResult {
   question: Question
@@ -154,7 +155,10 @@ export function Session({ questions, bookmarks, onAnswer, onToggleBookmark, onFi
 
         {checked && (
           <div className={`feedback ${result.correct ? 'ok' : 'bad'}`}>
-            <strong>{result.correct ? '✓ Correct!' : '✗ Not quite'}</strong>
+            <div className="feedback-head">
+              <strong>{result.correct ? '✓ Correct!' : '✗ Not quite'}</strong>
+              <CopyPromptButton key={q.id} text={buildStudyPrompt(q, result.selected, result.correct)} />
+            </div>
             <p>{q.explanation}</p>
           </div>
         )}
@@ -176,5 +180,20 @@ export function Session({ questions, bookmarks, onAnswer, onToggleBookmark, onFi
       </section>
       <p className="muted small-text center">Tip: press A–E to choose, Enter to check / continue.</p>
     </>
+  )
+}
+
+function CopyPromptButton({ text }: { text: string }) {
+  const [status, setStatus] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const copy = () =>
+    navigator.clipboard.writeText(text).then(
+      () => setStatus('copied'),
+      () => setStatus('failed'),
+    )
+  const label = { idle: '📋 Copy study prompt', copied: '✓ Copied', failed: 'Copy failed' }[status]
+  return (
+    <button className="small" onClick={copy} title="Copy a prompt to paste into an AI assistant for deeper study">
+      {label}
+    </button>
   )
 }
